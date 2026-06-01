@@ -32,6 +32,9 @@ export default function Dashboard() {
   const [destSuggestions, setDestSuggestions] = useState([]);
   const [showOriginSug, setShowOriginSug] = useState(false);
   const [showDestSug, setShowDestSug] = useState(false);
+  const [originLoading, setOriginLoading] = useState(false);
+  const [destLoading, setDestLoading] = useState(false);
+  
   const originRef = useRef(null);
   const destRef = useRef(null);
 
@@ -59,8 +62,11 @@ export default function Dashboard() {
   useEffect(() => {
     if (origin.trim().length < 2) {
       setOriginSuggestions([]);
+      setOriginLoading(false);
       return;
     }
+    
+    setOriginLoading(true);
     const delayDebounce = setTimeout(async () => {
       try {
         const res = await fetch(`/api/places?query=${encodeURIComponent(origin)}`);
@@ -70,6 +76,8 @@ export default function Dashboard() {
         }
       } catch (err) {
         console.error(err);
+      } finally {
+        setOriginLoading(false);
       }
     }, 400);
 
@@ -80,8 +88,11 @@ export default function Dashboard() {
   useEffect(() => {
     if (destination.trim().length < 2) {
       setDestSuggestions([]);
+      setDestLoading(false);
       return;
     }
+    
+    setDestLoading(true);
     const delayDebounce = setTimeout(async () => {
       try {
         const res = await fetch(`/api/places?query=${encodeURIComponent(destination)}`);
@@ -91,6 +102,8 @@ export default function Dashboard() {
         }
       } catch (err) {
         console.error(err);
+      } finally {
+        setDestLoading(false);
       }
     }, 400);
 
@@ -223,13 +236,6 @@ export default function Dashboard() {
     return date.toLocaleDateString('pt-BR', { weekday: 'long' });
   };
 
-  // Condicionais de Autocomplete
-  const showOriginPopular = showOriginSug && origin.trim().length < 2;
-  const showOriginRealSug = showOriginSug && origin.trim().length >= 2 && originSuggestions.length > 0;
-  
-  const showDestPopular = showDestSug && destination.trim().length < 2;
-  const showDestRealSug = showDestSug && destination.trim().length >= 2 && destSuggestions.length > 0;
-
   return (
     <div className="container" style={{ paddingBottom: '80px' }}>
       
@@ -329,8 +335,8 @@ export default function Dashboard() {
                 style={{ width: '100%', padding: '12px 16px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} 
               />
               
-              {/* Sugestões Populares - Exibidas ao focar ou com menos de 2 caracteres */}
-              {showOriginPopular && (
+              {/* Dropdown Unificado e Sem Flicker de Origem */}
+              {showOriginSug && (
                 <div style={{
                   position: 'absolute',
                   top: '100%',
@@ -345,62 +351,66 @@ export default function Dashboard() {
                   overflowY: 'auto',
                   marginTop: '4px'
                 }}>
-                  <div style={{ padding: '8px 12px', background: '#f5f5f5', fontSize: '11px', color: '#666', fontWeight: 'bold' }}>
-                    🌟 Aeroportos Frequentes (Euro Tur)
-                  </div>
-                  {POPULAR_AIRPORTS.map((place) => (
-                    <div 
-                      key={place.id}
-                      onMouseDown={() => {
-                        setOrigin(`${place.iata_code} - ${place.name} (${place.city.name})`);
-                        setShowOriginSug(false);
-                      }}
-                      className="suggestion-item"
-                    >
-                      <strong>{place.iata_code}</strong> - {place.name} ({place.city.name})
-                      <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
-                        ✓ Frequente
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Sugestões Reais da Duffel - Ao digitar 2+ caracteres */}
-              {showOriginRealSug && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#fff',
-                  border: '1px solid #ccc',
-                  borderRadius: '6px',
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
-                  zIndex: 10,
-                  maxHeight: '220px',
-                  overflowY: 'auto',
-                  marginTop: '4px'
-                }}>
-                  {originSuggestions.map((place) => {
-                    const cityName = place.city?.name || place.city_name || '';
-                    const formattedValue = `${place.iata_code} - ${place.name}${cityName ? ` (${cityName})` : ''}`;
-                    return (
-                      <div 
-                        key={place.id}
-                        onMouseDown={() => {
-                          setOrigin(formattedValue);
-                          setShowOriginSug(false);
-                        }}
-                        className="suggestion-item"
-                      >
-                        <strong>{place.iata_code}</strong> - {place.name} ({cityName || 'Global'})
-                        <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
-                          {place.type === 'airport' ? '✈️ Aeroporto' : '🏙️ Cidade'}
-                        </span>
+                  {/* CASO 1: Poucos caracteres digitados -> Mostrar Frequentes */}
+                  {origin.trim().length < 2 && (
+                    <>
+                      <div style={{ padding: '8px 12px', background: '#f5f5f5', fontSize: '11px', color: '#666', fontWeight: 'bold' }}>
+                        🌟 Aeroportos Frequentes (Euro Tur)
                       </div>
-                    );
-                  })}
+                      {POPULAR_AIRPORTS.map((place) => (
+                        <div 
+                          key={place.id}
+                          onMouseDown={() => {
+                            setOrigin(`${place.iata_code} - ${place.name} (${place.city.name})`);
+                            setShowOriginSug(false);
+                          }}
+                          className="suggestion-item"
+                        >
+                          <strong>{place.iata_code}</strong> - {place.name} ({place.city.name})
+                          <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
+                            ✓ Frequente
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* CASO 2: Carregando do GDS em tempo real */}
+                  {origin.trim().length >= 2 && originLoading && (
+                    <div style={{ padding: '15px', color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center' }}>
+                      🔍 Buscando no GDS global...
+                    </div>
+                  )}
+
+                  {/* CASO 3: Resultados obtidos com sucesso */}
+                  {origin.trim().length >= 2 && !originLoading && originSuggestions.length > 0 && (
+                    originSuggestions.map((place) => {
+                      const cityName = place.city?.name || place.city_name || '';
+                      const formattedValue = `${place.iata_code} - ${place.name}${cityName ? ` (${cityName})` : ''}`;
+                      return (
+                        <div 
+                          key={place.id}
+                          onMouseDown={() => {
+                            setOrigin(formattedValue);
+                            setShowOriginSug(false);
+                          }}
+                          className="suggestion-item"
+                        >
+                          <strong>{place.iata_code}</strong> - {place.name} ({cityName || 'Global'})
+                          <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
+                            {place.type === 'airport' ? '✈️ Aeroporto' : '🏙️ Cidade'}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* CASO 4: Busca concluída sem nenhum resultado */}
+                  {origin.trim().length >= 2 && !originLoading && originSuggestions.length === 0 && (
+                    <div style={{ padding: '15px', color: '#dc2626', fontSize: '14px', textAlign: 'center', fontWeight: '500' }}>
+                      ❌ Nenhum aeroporto encontrado.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -420,8 +430,8 @@ export default function Dashboard() {
                 style={{ width: '100%', padding: '12px 16px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} 
               />
               
-              {/* Sugestões Populares - Exibidas ao focar ou com menos de 2 caracteres */}
-              {showDestPopular && (
+              {/* Dropdown Unificado e Sem Flicker de Destino */}
+              {showDestSug && (
                 <div style={{
                   position: 'absolute',
                   top: '100%',
@@ -436,62 +446,66 @@ export default function Dashboard() {
                   overflowY: 'auto',
                   marginTop: '4px'
                 }}>
-                  <div style={{ padding: '8px 12px', background: '#f5f5f5', fontSize: '11px', color: '#666', fontWeight: 'bold' }}>
-                    🌟 Aeroportos Frequentes (Euro Tur)
-                  </div>
-                  {POPULAR_AIRPORTS.map((place) => (
-                    <div 
-                      key={place.id}
-                      onMouseDown={() => {
-                        setDestination(`${place.iata_code} - ${place.name} (${place.city.name})`);
-                        setShowDestSug(false);
-                      }}
-                      className="suggestion-item"
-                    >
-                      <strong>{place.iata_code}</strong> - {place.name} ({place.city.name})
-                      <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
-                        ✓ Frequente
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Sugestões Reais da Duffel - Ao digitar 2+ caracteres */}
-              {showDestRealSug && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#fff',
-                  border: '1px solid #ccc',
-                  borderRadius: '6px',
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
-                  zIndex: 10,
-                  maxHeight: '220px',
-                  overflowY: 'auto',
-                  marginTop: '4px'
-                }}>
-                  {destSuggestions.map((place) => {
-                    const cityName = place.city?.name || place.city_name || '';
-                    const formattedValue = `${place.iata_code} - ${place.name}${cityName ? ` (${cityName})` : ''}`;
-                    return (
-                      <div 
-                        key={place.id}
-                        onMouseDown={() => {
-                          setDestination(formattedValue);
-                          setShowDestSug(false);
-                        }}
-                        className="suggestion-item"
-                      >
-                        <strong>{place.iata_code}</strong> - {place.name} ({cityName || 'Global'})
-                        <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
-                          {place.type === 'airport' ? '✈️ Aeroporto' : '🏙️ Cidade'}
-                        </span>
+                  {/* CASO 1: Poucos caracteres digitados -> Mostrar Frequentes */}
+                  {destination.trim().length < 2 && (
+                    <>
+                      <div style={{ padding: '8px 12px', background: '#f5f5f5', fontSize: '11px', color: '#666', fontWeight: 'bold' }}>
+                        🌟 Aeroportos Frequentes (Euro Tur)
                       </div>
-                    );
-                  })}
+                      {POPULAR_AIRPORTS.map((place) => (
+                        <div 
+                          key={place.id}
+                          onMouseDown={() => {
+                            setDestination(`${place.iata_code} - ${place.name} (${place.city.name})`);
+                            setShowDestSug(false);
+                          }}
+                          className="suggestion-item"
+                        >
+                          <strong>{place.iata_code}</strong> - {place.name} ({place.city.name})
+                          <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
+                            ✓ Frequente
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* CASO 2: Carregando do GDS em tempo real */}
+                  {destination.trim().length >= 2 && destLoading && (
+                    <div style={{ padding: '15px', color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center' }}>
+                      🔍 Buscando no GDS global...
+                    </div>
+                  )}
+
+                  {/* CASO 3: Resultados obtidos com sucesso */}
+                  {destination.trim().length >= 2 && !destLoading && destSuggestions.length > 0 && (
+                    destSuggestions.map((place) => {
+                      const cityName = place.city?.name || place.city_name || '';
+                      const formattedValue = `${place.iata_code} - ${place.name}${cityName ? ` (${cityName})` : ''}`;
+                      return (
+                        <div 
+                          key={place.id}
+                          onMouseDown={() => {
+                            setDestination(formattedValue);
+                            setShowDestSug(false);
+                          }}
+                          className="suggestion-item"
+                        >
+                          <strong>{place.iata_code}</strong> - {place.name} ({cityName || 'Global'})
+                          <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', float: 'right', fontWeight: 'bold' }}>
+                            {place.type === 'airport' ? '✈️ Aeroporto' : '🏙️ Cidade'}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* CASO 4: Busca concluída sem nenhum resultado */}
+                  {destination.trim().length >= 2 && !destLoading && destSuggestions.length === 0 && (
+                    <div style={{ padding: '15px', color: '#dc2626', fontSize: '14px', textAlign: 'center', fontWeight: '500' }}>
+                      ❌ Nenhum aeroporto encontrado.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -887,7 +901,7 @@ export default function Dashboard() {
                     💵 Inclui: Passagem ida/volta ({adults} ADT {children > 0 && `+ ${children} CHD`}) + Hospedagem por <strong>{pkg.hotel.nights} noites</strong>.
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
-                    <div style={{ textHeading: 'right' }}>
+                    <div style={{ textAlign: 'right' }}>
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Investimento do Pacote Completo:</span>
                       <h2 style={{ margin: '3px 0 0 0', color: 'var(--primary-color)', fontSize: '26px', fontWeight: '800' }}>
                         R$ {pkg.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
