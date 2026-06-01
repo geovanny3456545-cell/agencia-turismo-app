@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [destination, setDestination] = useState('');
   const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
+  const [isOneWay, setIsOneWay] = useState(false);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [childAges, setChildAges] = useState([]);
@@ -147,7 +148,7 @@ export default function Dashboard() {
           origin,
           destination,
           departureDate,
-          returnDate: returnDate || null,
+          returnDate: isOneWay ? null : (returnDate || null),
           adults,
           children
         })
@@ -528,17 +529,40 @@ export default function Dashboard() {
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '14px', color: '#333' }}>
-                📅 Data de Volta (Obrigatório) {returnDate && <span style={{color: 'var(--secondary-color)', fontSize: '12px'}}>({getWeekdayName(returnDate)})</span>}
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '14px', color: isOneWay ? '#999' : '#333' }}>
+                📅 Data de Volta {!isOneWay && <span style={{color: 'var(--secondary-color)', fontSize: '12px', fontWeight: 'normal'}}>(Obrigatório)</span>} {returnDate && <span style={{color: 'var(--secondary-color)', fontSize: '12px'}}>({getWeekdayName(returnDate)})</span>}
               </label>
               <input 
                 type="date" 
-                required
-                value={returnDate}
+                required={!isOneWay}
+                disabled={isOneWay}
+                value={isOneWay ? '' : returnDate}
                 min={departureDate || new Date().toISOString().split('T')[0]}
                 onChange={(e) => setReturnDate(e.target.value)}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} 
+                style={{ 
+                  width: '100%', 
+                  padding: '12px 16px', 
+                  borderRadius: '6px', 
+                  border: '1px solid #ccc', 
+                  fontSize: '15px',
+                  backgroundColor: isOneWay ? '#f5f5f5' : '#fff',
+                  cursor: isOneWay ? 'not-allowed' : 'default'
+                }} 
               />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', fontSize: '13.5px', fontWeight: '600', color: 'var(--primary-color)', cursor: 'pointer', userSelect: 'none' }}>
+                <input 
+                  type="checkbox" 
+                  checked={isOneWay}
+                  onChange={(e) => {
+                    setIsOneWay(e.target.checked);
+                    if (e.target.checked) {
+                      setReturnDate('');
+                    }
+                  }}
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }}
+                />
+                <span>✈️ Somente Ida (Sem Volta)</span>
+              </label>
             </div>
           </div>
 
