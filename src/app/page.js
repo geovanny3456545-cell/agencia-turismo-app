@@ -1,0 +1,124 @@
+'use client';
+import { useState } from 'react';
+import './globals.css';
+
+export default function Dashboard() {
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+  const [searchType, setSearchType] = useState('aereo'); // aereo ou pacote
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    // Simulação do tempo de chamada para a API Duffel com redundância
+    setTimeout(() => {
+      setResults([
+        { id: 1, airline: 'GOL', price: 850, time: '10:00 - 12:30', direct: true, guaranteed: true },
+        { id: 2, airline: 'LATAM', price: 920, time: '14:15 - 16:45', direct: true, guaranteed: true },
+        { id: 3, airline: 'AZUL', price: 780, time: '08:00 - 13:00', direct: false, guaranteed: true },
+      ]);
+      setLoading(false);
+    }, 2500);
+  };
+
+  return (
+    <div className="container" style={{ paddingBottom: '50px' }}>
+      <header style={{ padding: '20px 0', borderBottom: '2px solid var(--primary-color)', marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>Euro Tur ✈️ <span style={{fontSize: '14px', fontWeight: 'normal', color: 'var(--text-secondary)'}}>| Agente Dashboard</span></h1>
+        <div style={{fontWeight: 'bold', color: 'var(--secondary-color)'}}>Bem-vindo, Agente</div>
+      </header>
+
+      <div className="card" style={{ marginBottom: '30px' }}>
+        <h2 style={{marginTop: 0, color: 'var(--primary-color)'}}>Busca Holística de Viagens</h2>
+        
+        {/* Toggle de Tipo de Busca */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <button 
+            className={`btn ${searchType === 'aereo' ? 'btn-primary' : ''}`}
+            onClick={() => setSearchType('aereo')}
+            style={{ border: '1px solid var(--primary-color)', color: searchType === 'aereo' ? '#fff' : 'var(--primary-color)', background: searchType === 'aereo' ? 'var(--primary-color)' : 'transparent'}}
+          >
+            ✈️ Somente Aéreo
+          </button>
+          <button 
+            className={`btn ${searchType === 'pacote' ? 'btn-primary' : ''}`}
+            onClick={() => setSearchType('pacote')}
+            style={{ border: '1px solid var(--primary-color)', color: searchType === 'pacote' ? '#fff' : 'var(--primary-color)', background: searchType === 'pacote' ? 'var(--primary-color)' : 'transparent'}}
+          >
+            🏨 Pacote Completo
+          </button>
+        </div>
+
+        <form onSubmit={handleSearch} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '15px', alignItems: 'end' }}>
+          <div>
+            <label style={{display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>Origem</label>
+            <input type="text" placeholder="Ex: BSB" required style={{width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc'}} />
+          </div>
+          <div>
+            <label style={{display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>Destino</label>
+            <input type="text" placeholder="Ex: MIA" required style={{width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc'}} />
+          </div>
+          <div>
+            <label style={{display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>Data</label>
+            <input type="date" required style={{width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc'}} />
+          </div>
+          <div>
+            <label style={{display: 'block', marginBottom: '5px', fontWeight: 'bold'}}>Passageiros</label>
+            <input type="number" min="1" defaultValue="1" style={{width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc'}} />
+          </div>
+          <button type="submit" className="btn btn-accent" style={{height: '42px'}}>
+            🔍 Buscar
+          </button>
+        </form>
+      </div>
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--secondary-color)' }}>
+          <h3>🔄 Buscando nas APIs GDS...</h3>
+          <p>Acionando redundância anti-golpe. Verificando disponibilidade real em múltiplas fontes.</p>
+        </div>
+      )}
+
+      {results && !loading && (
+        <div>
+          {/* Matriz de Datas */}
+          <div className="card" style={{ marginBottom: '20px', background: '#eef2f6' }}>
+            <h3 style={{marginTop: 0, fontSize: '16px'}}>📅 Matriz de Flexibilidade (Economia)</h3>
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'space-between' }}>
+              <div style={{padding: '10px', background: '#fff', borderRadius: '4px', textAlign: 'center', flex: 1}}>Ontem<br/><strong style={{color: 'green'}}>- R$ 120</strong></div>
+              <div style={{padding: '10px', background: 'var(--primary-color)', color: '#fff', borderRadius: '4px', textAlign: 'center', flex: 1}}>Data Escolhida<br/><strong>Base</strong></div>
+              <div style={{padding: '10px', background: '#fff', borderRadius: '4px', textAlign: 'center', flex: 1}}>Amanhã<br/><strong style={{color: 'green'}}>- R$ 50</strong></div>
+            </div>
+          </div>
+
+          <h2 style={{color: 'var(--primary-color)'}}>Resultados Verificados</h2>
+          <div style={{ display: 'grid', gap: '15px' }}>
+            {results.map(flight => (
+              <div key={flight.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 24px' }}>
+                <div>
+                  <h3 style={{margin: '0 0 5px 0'}}>{flight.airline} {flight.direct ? '(Direto)' : '(1 Escala)'}</h3>
+                  <div style={{color: 'var(--text-secondary)'}}>⏳ {flight.time}</div>
+                  {flight.guaranteed && (
+                    <div style={{color: 'var(--success)', fontSize: '12px', marginTop: '5px', fontWeight: 'bold'}}>
+                      ✅ Passagem validada no GDS (Sem risco)
+                    </div>
+                  )}
+                </div>
+                <div style={{textAlign: 'right'}}>
+                  <h2 style={{margin: '0 0 10px 0', color: 'var(--primary-color)'}}>R$ {flight.price}</h2>
+                  <button className="btn btn-primary" style={{padding: '6px 12px', fontSize: '14px'}}>Selecionar Opção</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{marginTop: '30px', textAlign: 'center'}}>
+            <button className="btn btn-accent" style={{fontSize: '18px', padding: '15px 30px'}}>
+              📄 Gerar Orçamento Dinâmico para o Cliente
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
