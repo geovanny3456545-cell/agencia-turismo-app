@@ -306,7 +306,13 @@ export default function OrcamentoCliente({ params }) {
               R$ {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <div style={{ opacity: 0.8, fontSize: '11px', marginTop: '5px' }}>
-              {hasHotel ? `Passagem Aérea Ida/Volta + Hospedagem (${orcamento.hotel.nights} noites)` : 'Passagem Aérea Ida/Volta em Classe Econômica'}
+              {(() => {
+                const isOneWay = orcamento.flight?.slices?.length === 1;
+                const flightTypeText = isOneWay ? 'Somente Ida' : 'Ida e Volta';
+                return hasHotel 
+                  ? `Passagem Aérea ${flightTypeText} + Hospedagem (${orcamento.hotel.nights} noites)` 
+                  : `Passagem Aérea ${flightTypeText} em Classe Econômica`;
+              })()}
             </div>
           </div>
 

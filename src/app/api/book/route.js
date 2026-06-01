@@ -39,6 +39,33 @@ export async function POST(request) {
 
     const token = process.env.DUFFEL_ACCESS_TOKEN || Buffer.from('ZHVmZmVsX3Rlc3RfVXlrclZDNWFFOFV1bjQxLWszZ2N4QndZeVBQTzhpbG9sTnZQVXA0R0JyNg==', 'base64').toString('utf-8');
 
+    // --- COBRANÇA EM REAIS (SISTEMA FINANCEIRO BRASILEIRO) ---
+    let rates = { BRL: 5.30 };
+    try {
+      const rateRes = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (rateRes.ok) {
+        const rateJson = await rateRes.json();
+        rates = rateJson.rates || rates;
+      }
+    } catch (err) {
+      console.error('Error fetching exchange rates in book route:', err);
+    }
+
+    const convertToBRL = (amount, fromCurrency) => {
+      const currency = (fromCurrency || 'BRL').toUpperCase();
+      if (currency === 'BRL') return amount;
+      
+      if (currency === 'USD') {
+        const rate = rates.BRL || 5.30;
+        return amount * rate;
+      }
+      
+      const rateToUSD = rates[currency] ? (1 / rates[currency]) : (currency === 'EUR' ? 1.09 : currency === 'GBP' ? 1.27 : 1.0);
+      const usdAmount = amount * rateToUSD;
+      const rateUSDtoBRL = rates.BRL || 5.30;
+      return usdAmount * rateUSDtoBRL;
+    };
+
     // 1. Mapear os passageiros recebidos do formulário
     // Se a API exigir IDs de passageiros reais da oferta, e eles não existirem (ex: simulações/voo mockado),
     // usaremos IDs simulados ou buscaremos da Duffel.
@@ -111,8 +138,10 @@ export async function POST(request) {
         airline: orderData.slices[0]?.segments[0]?.operating_carrier?.name || 'Companhia Aérea',
         airlineCode: orderData.slices[0]?.segments[0]?.operating_carrier?.iata_code || 'XX',
         slices: orderData.slices,
-        totalAmount: orderData.total_amount,
-        totalCurrency: orderData.total_currency,
+        totalAmount: Number(convertToBRL(parseFloat(orderData.total_amount), orderData.total_currency).toFixed(2)),
+        totalCurrency: 'BRL',
+        originalAmount: orderData.total_amount,
+        originalCurrency: orderData.total_currency
       } : {
         id: offerId,
         bookingReference: localizer,

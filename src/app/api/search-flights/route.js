@@ -132,6 +132,34 @@ export async function POST(request) {
     const offerRequest = json.data;
     const offers = offerRequest.offers || [];
 
+    // --- COBRANÇA EM REAIS (SISTEMA FINANCEIRO BRASILEIRO) ---
+    // Busca taxas de câmbio reais para converter USD/EUR/GBP para BRL
+    let rates = { BRL: 5.30 };
+    try {
+      const rateRes = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (rateRes.ok) {
+        const rateJson = await rateRes.json();
+        rates = rateJson.rates || rates;
+      }
+    } catch (err) {
+      console.error('Error fetching exchange rates in flight route:', err);
+    }
+
+    const convertToBRL = (amount, fromCurrency) => {
+      const currency = (fromCurrency || 'BRL').toUpperCase();
+      if (currency === 'BRL') return amount;
+      
+      if (currency === 'USD') {
+        const rate = rates.BRL || 5.30;
+        return amount * rate;
+      }
+      
+      const rateToUSD = rates[currency] ? (1 / rates[currency]) : (currency === 'EUR' ? 1.09 : currency === 'GBP' ? 1.27 : 1.0);
+      const usdAmount = amount * rateToUSD;
+      const rateUSDtoBRL = rates.BRL || 5.30;
+      return usdAmount * rateUSDtoBRL;
+    };
+
     // Formata e mapeia as ofertas retornadas
     const formattedOffers = offers.map(offer => {
       const outboundSlice = offer.slices[0];
@@ -180,10 +208,15 @@ export async function POST(request) {
       const outbound = getSliceDetails(outboundSlice);
       const inbound = getSliceDetails(inboundSlice);
 
+      const rawPrice = parseFloat(offer.total_amount);
+      const convertedPrice = convertToBRL(rawPrice, offer.total_currency);
+
       return {
         id: offer.id,
-        price: parseFloat(offer.total_amount),
-        currency: offer.total_currency || 'BRL',
+        price: Number(convertedPrice.toFixed(2)),
+        currency: 'BRL',
+        originalPrice: rawPrice,
+        originalCurrency: offer.total_currency || 'USD',
         outbound,
         inbound,
         airline: outbound?.airline || 'Multi-Airline',
