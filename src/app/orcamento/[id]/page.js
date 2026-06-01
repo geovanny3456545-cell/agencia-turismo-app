@@ -333,31 +333,6 @@ export default function OrcamentoCliente({ params }) {
 
         </div>
       </div>
-      
-      {/* CSS específico de impressão */}
-      <style jsx global>{`
-        @media print {
-          body { 
-            background: #fff !important; 
-            color: #000 !important;
-          }
-          div[style*="backgroundColor"] { 
-            background-color: #fff !important; 
-          }
-          .container { 
-            box-shadow: none !important; 
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .btn, .btn-actions, button, a { 
-            display: none !important; 
-          }
-          section {
-            page-break-inside: avoid;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -1123,31 +1123,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ESTILOS INTERNOS */}
-      <style jsx global>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .suggestion-item {
-          padding: 12px 15px;
-          cursor: pointer;
-          border-bottom: 1px solid #f0f0f0;
-          font-size: 14px;
-          transition: background 0.2s;
-          display: block;
-          color: #1a1a1a;
-          text-align: left;
-        }
-        .suggestion-item:hover {
-          background-color: #f0f5fa !important;
-        }
-      `}</style>
-
     </div>
   );
 }

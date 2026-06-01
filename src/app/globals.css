@@ -61,3 +61,54 @@ body {
   box-shadow: var(--shadow-sm);
   padding: 24px;
 }
+
+/* CSS para o Autocomplete Avançado */
+.suggestion-item {
+  padding: 12px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  transition: background 0.2s ease;
+  display: block;
+  color: #1a1a1a;
+  text-align: left;
+}
+
+.suggestion-item:hover {
+  background-color: #f0f5fa !important;
+}
+
+/* Animações Globais */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* CSS de Impressão de Alta Qualidade (PDF) */
+@media print {
+  body { 
+    background: #fff !important; 
+    color: #000 !important;
+  }
+  div[style*="backgroundColor"] { 
+    background-color: #fff !important; 
+  }
+  .container { 
+    box-shadow: none !important; 
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  .btn, .btn-actions, button, a, .btn-actions a { 
+    display: none !important; 
+  }
+  section {
+    page-break-inside: avoid;
+  }
+}
