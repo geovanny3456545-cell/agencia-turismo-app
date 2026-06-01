@@ -11,15 +11,70 @@ export async function POST(request) {
 
     const token = process.env.DUFFEL_ACCESS_TOKEN;
 
-    // Extrair apenas o código IATA (3 letras)
-    const getIATA = (val) => {
+    // --- RESOLVEDOR DE CÓDIGO IATA INTELIGENTE (Anti-Erro) ---
+    // Se o usuário digitou e não selecionou na lista (ex: "Viracopos", "Orlando"),
+    // fazemos uma busca rápida em segundo plano para obter o código IATA correto da Duffel.
+    const resolveIATA = async (val, apiToken) => {
       if (!val) return '';
-      const match = val.match(/^[A-Z]{3}/i) || val.match(/\(([A-Z]{3})\)/i) || [null, val.substring(0, 3)];
-      return (match[1] || match[0] || val.substring(0, 3)).toUpperCase();
+      
+      // Se já começa com um código IATA padrão de 3 letras (ex: "BSB - ...", "VCP - ...")
+      const directMatch = val.trim().match(/^([A-Z]{3})\b/i);
+      if (directMatch) {
+        return directMatch[1].toUpperCase();
+      }
+
+      // Caso contrário, limpa o texto para buscar o melhor aeroporto correspondente
+      let cleanQuery = val.toLowerCase();
+      const noiseWords = [
+        'aeroporto', 'airport', 'internacional', 'international',
+        'em', 'no', 'na', 'de', 'do', 'da', 'para', 'to',
+        'eua', 'usa', 'br', 'brasil', 'brazil'
+      ];
+      noiseWords.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        cleanQuery = cleanQuery.replace(regex, ' ');
+      });
+      cleanQuery = cleanQuery.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ');
+      cleanQuery = cleanQuery.replace(/\s+/g, ' ').trim();
+
+      const parts = cleanQuery.split(' ');
+      if (parts.length > 1) {
+        const lastPart = parts[parts.length - 1];
+        if (lastPart.length === 2 && /^[a-z]{2}$/i.test(lastPart)) {
+          parts.pop();
+          cleanQuery = parts.join(' ');
+        }
+      }
+
+      if (!cleanQuery) cleanQuery = val.trim();
+
+      try {
+        const res = await fetch(`https://api.duffel.com/places/suggestions?query=${encodeURIComponent(cleanQuery)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Duffel-Version': 'v2',
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const places = json.data || [];
+          if (places.length > 0) {
+            return places[0].iata_code.toUpperCase();
+          }
+        }
+      } catch (error) {
+        console.error('Error resolving IATA for:', val, error);
+      }
+
+      // Fallback padrão
+      return val.substring(0, 3).toUpperCase();
     };
 
-    const originIATA = getIATA(origin);
-    const destinationIATA = getIATA(destination);
+    const originIATA = await resolveIATA(origin, token);
+    const destinationIATA = await resolveIATA(destination, token);
 
     // Construct slices
     const slices = [
