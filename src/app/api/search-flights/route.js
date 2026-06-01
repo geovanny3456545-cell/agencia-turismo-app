@@ -191,6 +191,43 @@ export async function POST(request) {
           friendlyDuration = `${hrs} ${mins}`.trim();
         }
 
+        const segments = slice.segments.map(seg => {
+          let segDuration = 'N/A';
+          if (seg.duration) {
+            const hoursMatch = seg.duration.match(/(\d+)H/);
+            const minsMatch = seg.duration.match(/(\d+)M/);
+            const hrs = hoursMatch ? hoursMatch[1] + 'h' : '';
+            const mins = minsMatch ? minsMatch[1] + 'm' : '';
+            segDuration = `${hrs} ${mins}`.trim();
+          }
+
+          const carrierCode = seg.marketing_carrier?.iata_code || 'XX';
+          const flightNum = seg.marketing_carrier_flight_number || '';
+
+          return {
+            id: seg.id,
+            origin: seg.origin?.iata_code,
+            originName: seg.origin?.name,
+            originCity: seg.origin?.city_name,
+            destination: seg.destination?.iata_code,
+            destinationName: seg.destination?.name,
+            destinationCity: seg.destination?.city_name,
+            airline: seg.marketing_carrier?.name || 'Companhia Aérea',
+            airlineCode: carrierCode,
+            flightNumber: flightNum,
+            depTime: new Date(seg.departing_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            arrTime: new Date(seg.arriving_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            depDate: new Date(seg.departing_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            arrDate: new Date(seg.arriving_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            duration: segDuration,
+            aircraft: seg.aircraft?.name || null,
+            cabin: seg.passengers?.[0]?.cabin_class_marketing_name || 'Econômica',
+            baggageText: seg.passengers?.[0]?.baggages?.map(b => `${b.quantity} bagagem ${b.type === 'checked' ? 'despachada (23kg)' : 'de mão (10kg)'}`).join(', ') || '1 bagagem de mão (10kg)',
+            fareBasisCode: seg.passengers?.[0]?.fare_basis_code || 'N/A',
+            trackingLink: `https://www.flightradar24.com/data/flights/${carrierCode.toLowerCase()}${flightNum.toLowerCase()}`
+          };
+        });
+
         return {
           airline: carrier.name,
           airlineCode: carrier.iata_code,
@@ -202,6 +239,7 @@ export async function POST(request) {
           stopsText,
           connections,
           duration: friendlyDuration,
+          segments
         };
       };
 

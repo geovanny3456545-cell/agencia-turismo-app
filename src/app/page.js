@@ -43,7 +43,10 @@ export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState(null); // Voo ou Pacote selecionado
   const [showBookModal, setShowBookModal] = useState(false);
   const [passengersData, setPassengersData] = useState([]);
-  const [bookingLoading, setBookingLoading] = useState(false);
+  const [expandedOffers, setExpandedOffers] = useState({});
+  const toggleOfferExpand = (id) => {
+    setExpandedOffers(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Fechar dropdowns ao clicar fora
   useEffect(() => {
@@ -717,11 +720,11 @@ export default function Dashboard() {
                 className="card" 
                 style={{ 
                   display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
+                  flexDirection: 'column',
                   padding: '24px',
                   border: offer.isCheapest ? '2px solid var(--success)' : '1px solid #e0e0e0',
-                  position: 'relative'
+                  position: 'relative',
+                  gap: '20px'
                 }}
               >
                 {offer.isCheapest && (
@@ -741,43 +744,15 @@ export default function Dashboard() {
                   </span>
                 )}
 
-                <div style={{ flex: 1 }}>
-                  {/* Informações da Ida */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '15px' }}>
-                    <div style={{ 
-                      width: '48px', 
-                      height: '48px', 
-                      backgroundColor: 'var(--primary-color)', 
-                      color: 'white', 
-                      borderRadius: '50%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      fontWeight: 'bold',
-                      fontSize: '13px'
-                    }}>
-                      {offer.airlineCode}
-                    </div>
-                    <div>
-                      <h4 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>{offer.airline}</h4>
-                      <div style={{ display: 'flex', gap: '15px', color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-                        <span>🛫 Ida: <strong>{offer.outbound.depTime} ({offer.outbound.depDate})</strong></span>
-                        <span>🛬 Chegada: {offer.outbound.arrTime}</span>
-                        <span>⏳ Duração: {offer.outbound.duration}</span>
-                        <span style={{ color: offer.outbound.stopsCount === 0 ? 'var(--success)' : 'var(--secondary-color)', fontWeight: 'bold' }}>
-                          • {offer.outbound.stopsText} {offer.outbound.connections && `(${offer.outbound.connections})`}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Informações da Volta */}
-                  {offer.inbound && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderTop: '1px dashed #eee', paddingTop: '15px' }}>
+                {/* Bloco Superior: Informações de Voo e Preço lado a lado */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <div style={{ flex: 1 }}>
+                    {/* Informações da Ida */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '15px' }}>
                       <div style={{ 
                         width: '48px', 
                         height: '48px', 
-                        backgroundColor: '#555', 
+                        backgroundColor: 'var(--primary-color)', 
                         color: 'white', 
                         borderRadius: '50%', 
                         display: 'flex', 
@@ -791,40 +766,194 @@ export default function Dashboard() {
                       <div>
                         <h4 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>{offer.airline}</h4>
                         <div style={{ display: 'flex', gap: '15px', color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-                          <span>🛫 Volta: <strong>{offer.inbound.depTime} ({offer.inbound.depDate})</strong></span>
-                          <span>🛬 Chegada: {offer.inbound.arrTime}</span>
-                          <span>⏳ Duração: {offer.inbound.duration}</span>
-                          <span style={{ color: offer.inbound.stopsCount === 0 ? 'var(--success)' : 'var(--secondary-color)', fontWeight: 'bold' }}>
-                            • {offer.inbound.stopsText} {offer.inbound.connections && `(${offer.inbound.connections})`}
+                          <span>🛫 Ida: <strong>{offer.outbound.depTime} ({offer.outbound.depDate})</strong></span>
+                          <span>🛬 Chegada: {offer.outbound.arrTime}</span>
+                          <span>⏳ Duração: {offer.outbound.duration}</span>
+                          <span style={{ color: offer.outbound.stopsCount === 0 ? 'var(--success)' : 'var(--secondary-color)', fontWeight: 'bold' }}>
+                            • {offer.outbound.stopsText} {offer.outbound.connections && `(${offer.outbound.connections})`}
                           </span>
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                    <span style={{ fontSize: '12px', backgroundColor: '#eef2f6', color: 'var(--primary-color)', padding: '4px 10px', borderRadius: '4px', fontWeight: '600' }}>
-                      💼 Bagagem de mão inclusa (10kg)
-                    </span>
-                    <span style={{ fontSize: '12px', backgroundColor: '#eef2f6', color: 'var(--primary-color)', padding: '4px 10px', borderRadius: '4px', fontWeight: '600' }}>
-                      ⚡ Emissão Instantânea
-                    </span>
+                    {/* Informações da Volta */}
+                    {offer.inbound && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderTop: '1px dashed #eee', paddingTop: '15px' }}>
+                        <div style={{ 
+                          width: '48px', 
+                          height: '48px', 
+                          backgroundColor: '#555', 
+                          color: 'white', 
+                          borderRadius: '50%', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '13px'
+                        }}>
+                          {offer.airlineCode}
+                        </div>
+                        <div>
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>{offer.airline}</h4>
+                          <div style={{ display: 'flex', gap: '15px', color: 'var(--text-secondary)', fontSize: '13.5px' }}>
+                            <span>🛫 Volta: <strong>{offer.inbound.depTime} ({offer.inbound.depDate})</strong></span>
+                            <span>🛬 Chegada: {offer.inbound.arrTime}</span>
+                            <span>⏳ Duração: {offer.inbound.duration}</span>
+                            <span style={{ color: offer.inbound.stopsCount === 0 ? 'var(--success)' : 'var(--secondary-color)', fontWeight: 'bold' }}>
+                              • {offer.inbound.stopsText} {offer.inbound.connections && `(${offer.inbound.connections})`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', backgroundColor: '#eef2f6', color: 'var(--primary-color)', padding: '4px 10px', borderRadius: '4px', fontWeight: '600' }}>
+                        💼 Bagagem de mão inclusa (10kg)
+                      </span>
+                      <span style={{ fontSize: '12px', backgroundColor: '#eef2f6', color: 'var(--primary-color)', padding: '4px 10px', borderRadius: '4px', fontWeight: '600' }}>
+                        ⚡ Emissão Instantânea
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => toggleOfferExpand(offer.id)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--secondary-color)',
+                          fontWeight: 'bold',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          backgroundColor: 'rgba(0, 51, 102, 0.05)'
+                        }}
+                      >
+                        {expandedOffers[offer.id] ? '▲ Ocultar Detalhes' : '▼ Detalhar Voos e Referências'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right', marginLeft: '30px', borderLeft: '1px solid #eee', paddingLeft: '30px', minWidth: '180px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Preço Total {adults} ADT {children > 0 && `+ ${children} CHD`}:</span>
+                    <h2 style={{ margin: '5px 0 15px 0', color: 'var(--primary-color)', fontSize: '28px', fontWeight: '800' }}>
+                      {offer.currency === 'BRL' ? 'R$' : offer.currency} {offer.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </h2>
+                    <button 
+                      onClick={() => handleOpenBookModal(offer)}
+                      className="btn btn-accent" 
+                      style={{ width: '100%', padding: '12px 20px', fontSize: '15px', fontWeight: 'bold' }}
+                    >
+                      Emitir Hold
+                    </button>
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right', marginLeft: '30px', borderLeft: '1px solid #eee', paddingLeft: '30px', minWidth: '180px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Preço Total {adults} ADT {children > 0 && `+ ${children} CHD`}:</span>
-                  <h2 style={{ margin: '5px 0 15px 0', color: 'var(--primary-color)', fontSize: '28px', fontWeight: '800' }}>
-                    {offer.currency === 'BRL' ? 'R$' : offer.currency} {offer.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </h2>
-                  <button 
-                    onClick={() => handleOpenBookModal(offer)}
-                    className="btn btn-accent" 
-                    style={{ width: '100%', padding: '12px 20px', fontSize: '15px', fontWeight: 'bold' }}
-                  >
-                    Emitir Hold
-                  </button>
-                </div>
+                {/* Bloco Inferior: Acordeão Detalhado de Voos (Timeline dos Segments) */}
+                {expandedOffers[offer.id] && (
+                  <div style={{ width: '100%', borderTop: '1px dashed #ddd', paddingTop: '20px', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                      
+                      {/* DETALHAMENTO DA IDA */}
+                      <div>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: '14.5px', color: 'var(--primary-color)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '6px' }}>
+                          <span>🛫 Trecho de Ida ({offer.outbound.stopsText})</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>Duração Total: {offer.outbound.duration}</span>
+                        </h4>
+                        
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          {offer.outbound.segments?.map((seg, idx) => (
+                            <div key={seg.id || idx} style={{ 
+                              backgroundColor: '#f8f9fa', 
+                              border: '1px solid #e9ecef', 
+                              borderRadius: '6px', 
+                              padding: '15px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: 'var(--primary-color)', fontSize: '13.5px' }}>
+                                <span>✈️ Voo: {seg.airlineCode} {seg.flightNumber} ({seg.airline})</span>
+                                <a href={seg.trackingLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary-color)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'underline' }}>
+                                  🛰️ Rastrear no Flightradar24
+                                </a>
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', fontSize: '13px', color: '#333' }}>
+                                <div>
+                                  <strong>Origem:</strong> {seg.origin} - {seg.originCity} ({seg.originName})<br/>
+                                  📅 Partida: {seg.depDate} às {seg.depTime}
+                                </div>
+                                <div>
+                                  <strong>Destino:</strong> {seg.destination} - {seg.destinationCity} ({seg.destinationName})<br/>
+                                  📅 Chegada: {seg.arrDate} às {seg.arrTime}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', fontSize: '11.5px', color: 'var(--text-secondary)', borderTop: '1px dashed #eee', paddingTop: '8px', marginTop: '2px' }}>
+                                <span>⏳ Duração: {seg.duration}</span>
+                                {seg.aircraft && <span>✈️ Aeronave: {seg.aircraft}</span>}
+                                <span>💺 Cabine: {seg.cabin}</span>
+                                <span>💼 Franquia: {seg.baggageText}</span>
+                                <span>🔑 Fare Basis: <code>{seg.fareBasisCode}</code></span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* DETALHAMENTO DA VOLTA */}
+                      {offer.inbound && (
+                        <div>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14.5px', color: 'var(--primary-color)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '6px' }}>
+                            <span>🛬 Trecho de Volta ({offer.inbound.stopsText})</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>Duração Total: {offer.inbound.duration}</span>
+                          </h4>
+                          
+                          <div style={{ display: 'grid', gap: '12px' }}>
+                            {offer.inbound.segments?.map((seg, idx) => (
+                              <div key={seg.id || idx} style={{ 
+                                backgroundColor: '#f8f9fa', 
+                                border: '1px solid #e9ecef', 
+                                borderRadius: '6px', 
+                                padding: '15px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: 'var(--primary-color)', fontSize: '13.5px' }}>
+                                  <span>✈️ Voo: {seg.airlineCode} {seg.flightNumber} ({seg.airline})</span>
+                                  <a href={seg.trackingLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary-color)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'underline' }}>
+                                    🛰️ Rastrear no Flightradar24
+                                  </a>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', fontSize: '13px', color: '#333' }}>
+                                  <div>
+                                    <strong>Origem:</strong> {seg.origin} - {seg.originCity} ({seg.originName})<br/>
+                                    📅 Partida: {seg.depDate} às {seg.depTime}
+                                  </div>
+                                  <div>
+                                    <strong>Destino:</strong> {seg.destination} - {seg.destinationCity} ({seg.destinationName})<br/>
+                                    📅 Chegada: {seg.arrDate} às {seg.arrTime}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', fontSize: '11.5px', color: 'var(--text-secondary)', borderTop: '1px dashed #eee', paddingTop: '8px', marginTop: '2px' }}>
+                                  <span>⏳ Duração: {seg.duration}</span>
+                                  {seg.aircraft && <span>✈️ Aeronave: {seg.aircraft}</span>}
+                                  <span>💺 Cabine: {seg.cabin}</span>
+                                  <span>💼 Franquia: {seg.baggageText}</span>
+                                  <span>🔑 Fare Basis: <code>{seg.fareBasisCode}</code></span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
 
@@ -896,9 +1025,31 @@ export default function Dashboard() {
                   padding: '15px 20px', 
                   borderLeft: '4px solid var(--secondary-color)'
                 }}>
-                  <strong style={{ display: 'block', fontSize: '13.5px', color: 'var(--primary-color)', marginBottom: '10px' }}>
-                    ✈️ Voo Real Duffel Acoplado ao Pacote:
-                  </strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <strong style={{ fontSize: '13.5px', color: 'var(--primary-color)' }}>
+                      ✈️ Voo Real Duffel Acoplado ao Pacote:
+                    </strong>
+                    <button 
+                      type="button"
+                      onClick={() => toggleOfferExpand(pkg.id)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--secondary-color)',
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        backgroundColor: 'rgba(0, 51, 102, 0.05)'
+                      }}
+                    >
+                      {expandedOffers[pkg.id] ? '▲ Ocultar Detalhes' : '▼ Detalhar Voos e Referências'}
+                    </button>
+                  </div>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', gap: '20px' }}>
                     <div>
@@ -910,6 +1061,105 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
+
+                  {/* Detalhes expandidos do voo acoplado ao pacote */}
+                  {expandedOffers[pkg.id] && (
+                    <div style={{ width: '100%', borderTop: '1px dashed #ddd', paddingTop: '15px', marginTop: '15px', animation: 'fadeIn 0.2s ease-out' }}>
+                      <div style={{ display: 'grid', gap: '15px' }}>
+                        
+                        {/* IDA DETALHADA */}
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--primary-color)', marginBottom: '8px' }}>
+                            🛫 Trecho de Ida ({pkg.flight.outbound.stopsText}) - Duração: {pkg.flight.outbound.duration}
+                          </div>
+                          <div style={{ display: 'grid', gap: '8px' }}>
+                            {pkg.flight.outbound.segments?.map((seg, idx) => (
+                              <div key={seg.id || idx} style={{ 
+                                backgroundColor: '#fff', 
+                                border: '1px solid #e9ecef', 
+                                borderRadius: '6px', 
+                                padding: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: 'var(--primary-color)', fontSize: '12.5px' }}>
+                                  <span>✈️ Voo: {seg.airlineCode} {seg.flightNumber} ({seg.airline})</span>
+                                  <a href={seg.trackingLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary-color)', fontSize: '11px', textDecoration: 'underline' }}>
+                                    Rastrear no Flightradar24
+                                  </a>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', color: '#333' }}>
+                                  <div>
+                                    <strong>De:</strong> {seg.origin} ({seg.originCity})<br/>
+                                    📅 {seg.depDate} às {seg.depTime}
+                                  </div>
+                                  <div>
+                                    <strong>Para:</strong> {seg.destination} ({seg.destinationCity})<br/>
+                                    📅 {seg.arrDate} às {seg.arrTime}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', fontSize: '11px', color: 'var(--text-secondary)', borderTop: '1px dashed #eee', paddingTop: '6px' }}>
+                                  <span>⏳ {seg.duration}</span>
+                                  {seg.aircraft && <span>✈️ {seg.aircraft}</span>}
+                                  <span>💺 {seg.cabin}</span>
+                                  <span>💼 {seg.baggageText}</span>
+                                  <span>🔑 Tarifa: <code>{seg.fareBasisCode}</code></span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* VOLTA DETALHADA */}
+                        {pkg.flight.inbound && (
+                          <div style={{ marginTop: '5px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--primary-color)', marginBottom: '8px' }}>
+                              🛬 Trecho de Volta ({pkg.flight.inbound.stopsText}) - Duração: {pkg.flight.inbound.duration}
+                            </div>
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                              {pkg.flight.inbound.segments?.map((seg, idx) => (
+                                <div key={seg.id || idx} style={{ 
+                                  backgroundColor: '#fff', 
+                                  border: '1px solid #e9ecef', 
+                                  borderRadius: '6px', 
+                                  padding: '12px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '6px'
+                                }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: 'var(--primary-color)', fontSize: '12.5px' }}>
+                                    <span>✈️ Voo: {seg.airlineCode} {seg.flightNumber} ({seg.airline})</span>
+                                    <a href={seg.trackingLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary-color)', fontSize: '11px', textDecoration: 'underline' }}>
+                                      Rastrear no Flightradar24
+                                    </a>
+                                  </div>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', color: '#333' }}>
+                                    <div>
+                                      <strong>De:</strong> {seg.origin} ({seg.originCity})<br/>
+                                      📅 {seg.depDate} às {seg.depTime}
+                                    </div>
+                                    <div>
+                                      <strong>Para:</strong> {seg.destination} ({seg.destinationCity})<br/>
+                                      📅 {seg.arrDate} às {seg.arrTime}
+                                    </div>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', fontSize: '11px', color: 'var(--text-secondary)', borderTop: '1px dashed #eee', paddingTop: '6px' }}>
+                                    <span>⏳ {seg.duration}</span>
+                                    {seg.aircraft && <span>✈️ {seg.aircraft}</span>}
+                                    <span>💺 {seg.cabin}</span>
+                                    <span>💼 {seg.baggageText}</span>
+                                    <span>🔑 Tarifa: <code>{seg.fareBasisCode}</code></span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Bloco Inferior: Preço e Detalhamento da Compra */}
