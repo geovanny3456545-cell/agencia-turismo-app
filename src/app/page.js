@@ -29,7 +29,59 @@ export default function Dashboard() {
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [childAges, setChildAges] = useState([]);
-  
+  const [recentSearches, setRecentSearches] = useState([]);
+
+  // Carregar buscas recentes do localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('recentSearches');
+      if (stored) {
+        try {
+          setRecentSearches(JSON.parse(stored));
+        } catch (e) {
+          console.error('Erro ao ler buscas recentes:', e);
+        }
+      }
+    }
+  }, []);
+
+  // Salvar busca no localStorage (limita a 3 buscas)
+  const saveSearchToRecent = (searchObj) => {
+    setRecentSearches(prev => {
+      const filtered = prev.filter(s => !(
+        s.searchType === searchObj.searchType &&
+        s.origin === searchObj.origin &&
+        s.destination === searchObj.destination &&
+        s.departureDate === searchObj.departureDate &&
+        s.returnDate === searchObj.returnDate &&
+        s.adults === searchObj.adults &&
+        s.children === searchObj.children &&
+        s.isOneWay === searchObj.isOneWay &&
+        s.profile === searchObj.profile
+      ));
+      const updated = [searchObj, ...filtered].slice(0, 3);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('recentSearches', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const handleApplyRecentSearch = (search) => {
+    setSearchType(search.searchType || 'aereo');
+    setOrigin(search.origin || '');
+    setDestination(search.destination || '');
+    setDepartureDate(search.departureDate || '');
+    setReturnDate(search.returnDate || '');
+    setIsOneWay(!!search.isOneWay);
+    setNonStop(!!search.nonStop);
+    setProfile(search.profile || 'conforto');
+    setAdults(search.adults || 1);
+    setChildren(search.children || 0);
+    setChildAges(search.childAges || []);
+    setResults(null);
+  };
+
   // Autocomplete
   const [originSuggestions, setOriginSuggestions] = useState([]);
   const [destSuggestions, setDestSuggestions] = useState([]);
@@ -142,6 +194,21 @@ export default function Dashboard() {
     e.preventDefault();
     setLoading(true);
     setResults(null);
+
+    // Salvar nos parâmetros das últimas buscas
+    saveSearchToRecent({
+      searchType,
+      origin,
+      destination,
+      departureDate,
+      returnDate: isOneWay ? null : returnDate,
+      isOneWay,
+      nonStop,
+      profile,
+      adults,
+      children,
+      childAges
+    });
 
     const endpoint = searchType === 'pacote' ? '/api/search-packages' : '/api/search-flights';
 
@@ -294,6 +361,58 @@ export default function Dashboard() {
         <h2 style={{ marginTop: 0, color: 'var(--primary-color)', fontSize: '22px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span>🔍</span> Painel de Emissões e Pacotes Holísticos
         </h2>
+
+        {/* Histórico das Últimas 3 Buscas */}
+        {recentSearches.length > 0 && (
+          <div style={{ 
+            marginBottom: '25px', 
+            padding: '16px 20px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px', 
+            border: '1px solid #e9ecef' 
+          }}>
+            <strong style={{ fontSize: '13px', color: '#495057', display: 'block', marginBottom: '8px' }}>
+              🕒 Reutilizar Busca Recente:
+            </strong>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {recentSearches.map((search, idx) => {
+                // Formatar texto descritivo
+                const origCode = search.origin ? search.origin.split(' - ')[0] : '?';
+                const destCode = search.destination ? search.destination.split(' - ')[0] : '?';
+                const dateText = search.departureDate ? new Date(search.departureDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+                const typeIcon = search.searchType === 'pacote' ? '🏨' : '✈️';
+                const label = `${typeIcon} ${origCode} ➔ ${destCode} (${dateText})`;
+                
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleApplyRecentSearch(search)}
+                    style={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #ced4da',
+                      borderRadius: '20px',
+                      padding: '6px 14px',
+                      fontSize: '12.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--primary-color)',
+                      fontWeight: '600',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--primary-color)'; e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.borderColor = '#ced4da'; e.currentTarget.style.backgroundColor = '#fff'; }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {/* Alternador de Busca com micro-animações */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '30px' }}>
