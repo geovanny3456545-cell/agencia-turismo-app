@@ -14,6 +14,8 @@ const LOCAL_AIRPORTS = [
   { iata_code: 'LIS', name: 'Lisbon Humberto Delgado Airport', city_name: 'Lisboa', country_name: 'Portugal', type: 'airport', id: 'arp_lis_pt', city: { name: 'Lisboa' } },
   { iata_code: 'CDG', name: 'Charles de Gaulle Airport', city_name: 'Paris', country_name: 'França', type: 'airport', id: 'arp_cdg_fr', city: { name: 'Paris' } },
   { iata_code: 'MAD', name: 'Adolfo Suárez Madrid-Barajas Airport', city_name: 'Madrid', country_name: 'Espanha', type: 'airport', id: 'arp_mad_es', city: { name: 'Madrid' } },
+  { iata_code: 'DUB', name: 'Dublin Airport', city_name: 'Dublin', country_name: 'Irlanda', type: 'airport', id: 'arp_dub_ie', city: { name: 'Dublin' } },
+  { iata_code: 'LHR', name: 'London Heathrow Airport', city_name: 'Londres', country_name: 'Reino Unido', type: 'airport', id: 'arp_lhr_gb', city: { name: 'Londres' } },
   { iata_code: 'SSA', name: 'Deputado Luís Eduardo Magalhães Airport', city_name: 'Salvador / BA', country_name: 'Brasil', type: 'airport', id: 'arp_ssa_br', city: { name: 'Salvador / BA' } },
   { iata_code: 'CNF', name: 'Tancredo Neves International Airport', city_name: 'Belo Horizonte / MG', country_name: 'Brasil', type: 'airport', id: 'arp_cnf_br', city: { name: 'Belo Horizonte / MG' } },
   { iata_code: 'REC', name: 'Guararapes-Gilberto Freyre Airport', city_name: 'Recife / PE', country_name: 'Brasil', type: 'airport', id: 'arp_rec_br', city: { name: 'Recife / PE' } },
