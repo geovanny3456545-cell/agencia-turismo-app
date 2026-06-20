@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import '../../globals.css';
 
-export default function OrcamentoCliente({ params }) {
+function OrcamentoClienteContent({ params }) {
   const resolvedParams = use(params);
   const searchParams = useSearchParams();
   const [seguroAdicionado, setSeguroAdicionado] = useState(false);
@@ -27,7 +27,19 @@ export default function OrcamentoCliente({ params }) {
     const token = searchParams.get('token');
     if (token) {
       try {
-        const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
+        // Substituir espaços por '+' (que podem ter sido convertidos se não estivessem devidamente URL-encoded)
+        const normalizedToken = token.replace(/ /g, '+');
+        
+        // Decodificar de forma segura UTF-8 usando TextDecoder
+        const binaryString = atob(normalizedToken);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const decoder = new TextDecoder('utf-8');
+        const decoded = JSON.parse(decoder.decode(bytes));
+
         setBookingData(decoded);
         setLoading(false);
         return;
@@ -442,5 +454,19 @@ export default function OrcamentoCliente({ params }) {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OrcamentoCliente({ params }) {
+  return (
+    <Suspense fallback={
+      <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: 'var(--primary-color)' }}>
+          <h3>🔄 Carregando seu Orçamento Premium...</h3>
+        </div>
+      </div>
+    }>
+      <OrcamentoClienteContent params={params} />
+    </Suspense>
   );
 }

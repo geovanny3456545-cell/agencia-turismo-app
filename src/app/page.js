@@ -231,7 +231,7 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         // Redirecionar para o orçamento passando o token base64 para persistência instantânea no client
-        window.location.href = `/orcamento/${data.booking.id}?token=${data.token}`;
+        window.location.href = `/orcamento/${data.booking.id}?token=${encodeURIComponent(data.token)}`;
       } else {
         alert('Erro ao confirmar a reserva de testes no GDS. Tentando novamente...');
       }
