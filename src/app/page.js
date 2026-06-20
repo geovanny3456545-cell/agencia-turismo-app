@@ -24,6 +24,8 @@ export default function Dashboard() {
   const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [isOneWay, setIsOneWay] = useState(false);
+  const [nonStop, setNonStop] = useState(false);
+  const [profile, setProfile] = useState('conforto');
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [childAges, setChildAges] = useState([]);
@@ -153,7 +155,9 @@ export default function Dashboard() {
           departureDate,
           returnDate: isOneWay ? null : (returnDate || null),
           adults,
-          children
+          children,
+          nonStop,
+          profile
         })
       });
 
@@ -214,6 +218,10 @@ export default function Dashboard() {
             price: selectedItem.price,
             airline: isPackage ? selectedItem.flight.airline : selectedItem.airline,
             airlineCode: isPackage ? selectedItem.flight.airlineCode : selectedItem.airlineCode,
+            stopsText: isPackage ? selectedItem.flight.outbound.stopsText : selectedItem.outbound.stopsText,
+            depTime: isPackage ? selectedItem.flight.outbound.depTime : selectedItem.outbound.depTime,
+            arrTime: isPackage ? selectedItem.flight.outbound.arrTime : selectedItem.outbound.arrTime,
+            duration: isPackage ? selectedItem.flight.outbound.duration : selectedItem.outbound.duration,
           }
         })
       });
@@ -658,8 +666,44 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* PREFERÊNCIAS DE BUSCA ADICIONAIS */}
+          <div style={{ 
+            backgroundColor: '#f8f9fa', 
+            border: '1px solid #e9ecef', 
+            borderRadius: '8px', 
+            padding: '20px', 
+            marginBottom: '30px' 
+          }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: 'var(--primary-color)' }}>⚙️ Preferências de Voo</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '13px' }}>Filtro de Conexões</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', fontSize: '14px', marginTop: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={nonStop}
+                    onChange={(e) => setNonStop(e.target.checked)}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary-color)' }}
+                  />
+                  <span>Somente Voos Diretos (Sem Escalas)</span>
+                </label>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '13px' }}>Perfil de Viagem / Preço</label>
+                <select 
+                  value={profile}
+                  onChange={(e) => setProfile(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '14px' }}
+                >
+                  <option value="conforto">💼 Conforto (Voos rápidos / menor escala)</option>
+                  <option value="mochilao">🎒 Mochilão (Priorizar menor preço total)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '54px', fontSize: '17px', borderRadius: '6px' }}>
-            ⚡ Iniciar Consulta Holística em Tempo Real (Duffel GDS)
+            ⚡ Iniciar Consulta Híbrida em Tempo Real (Amadeus + Kiwi)
           </button>
         </form>
       </div>
@@ -764,7 +808,19 @@ export default function Dashboard() {
                         {offer.airlineCode}
                       </div>
                       <div>
-                        <h4 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>{offer.airline}</h4>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>{offer.airline}</span>
+                          <span style={{ 
+                            fontSize: '11px', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            backgroundColor: offer.provider === 'kiwi' ? 'rgba(0, 210, 140, 0.15)' : 'rgba(0, 80, 180, 0.15)', 
+                            color: offer.provider === 'kiwi' ? '#00b070' : '#0050b0',
+                            fontWeight: 'bold' 
+                          }}>
+                            {offer.providerLabel || (offer.provider === 'kiwi' ? 'Mochilão' : 'GDS Tradicional')}
+                          </span>
+                        </h4>
                         <div style={{ display: 'flex', gap: '15px', color: 'var(--text-secondary)', fontSize: '13.5px' }}>
                           <span>🛫 Ida: <strong>{offer.outbound.depTime} ({offer.outbound.depDate})</strong></span>
                           <span>🛬 Chegada: {offer.outbound.arrTime}</span>
@@ -1026,8 +1082,18 @@ export default function Dashboard() {
                   borderLeft: '4px solid var(--secondary-color)'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <strong style={{ fontSize: '13.5px', color: 'var(--primary-color)' }}>
-                      ✈️ Voo Real Duffel Acoplado ao Pacote:
+                    <strong style={{ fontSize: '13.5px', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>✈️ Voo Híbrido Acoplado ao Pacote:</span>
+                      <span style={{ 
+                        fontSize: '11.5px', 
+                        padding: '2px 8px', 
+                        borderRadius: '12px', 
+                        backgroundColor: pkg.flight.provider === 'kiwi' ? 'rgba(0, 210, 140, 0.15)' : 'rgba(0, 80, 180, 0.15)', 
+                        color: pkg.flight.provider === 'kiwi' ? '#00b070' : '#0050b0',
+                        fontWeight: 'bold' 
+                      }}>
+                        {pkg.flight.providerLabel || (pkg.flight.provider === 'kiwi' ? 'Mochilão' : 'GDS Tradicional')}
+                      </span>
                     </strong>
                     <button 
                       type="button"

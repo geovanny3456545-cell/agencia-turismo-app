@@ -69,6 +69,28 @@ const HOTELS_DB = {
       amenities: ["Vista Torre Eiffel", "Academia Moderna", "Restaurante Trocadéro", "Wi-Fi Rápido", "Bar de Vinhos"]
     }
   ],
+  DUB: [
+    {
+      id: "hotel-dub-1",
+      name: "The Morrison DoubleTree by Hilton",
+      stars: 4,
+      image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80",
+      description: "Hotel boutique de alto padrão no centro de Dublin, às margens do Rio Liffey. Design moderno com bar badalado e excelente café da manhã irlandês.",
+      dailyRate: 780,
+      address: "Ormond Quay Lower, Dublin, D01 K7Y3",
+      amenities: ["Wi-Fi Grátis", "Bar Irlandês", "Academia", "Café da Manhã Incluso", "Suítes Espaçosas"]
+    },
+    {
+      id: "hotel-dub-2",
+      name: "The Westbury Hotel",
+      stars: 5,
+      image: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80",
+      description: "Um dos hotéis mais luxuosos da Irlanda, a poucos passos da Grafton Street. Serviço 5 estrelas clássico, restaurantes premiados e chá da tarde famoso.",
+      dailyRate: 1650,
+      address: "Balfe St, Dublin, D02 CH66",
+      amenities: ["Serviço Concierge", "Alta Gastronomia", "Wi-Fi Premium", "Spa no Quarto", "Decoração de Luxo"]
+    }
+  ],
   BSB: [
     {
       id: "hotel-bsb-1",
@@ -135,130 +157,54 @@ const generateDynamicHotels = (iataCode) => {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { origin, destination, departureDate, returnDate, adults = 1, children = 0 } = body;
+    const { 
+      origin, 
+      destination, 
+      departureDate, 
+      returnDate, 
+      adults = 1, 
+      children = 0,
+      nonStop = false,
+      profile = 'conforto'
+    } = body;
 
     if (!origin || !destination || !departureDate) {
       return NextResponse.json({ error: 'Parâmetros obrigatórios ausentes' }, { status: 400 });
     }
 
-    const token = process.env.DUFFEL_ACCESS_TOKEN || Buffer.from('ZHVmZmVsX3Rlc3RfVXlrclZDNWFFOFV1bjQxLWszZ2N4QndZeVBQTzhpbG9sTnZQVXA0R0JyNg==', 'base64').toString('utf-8');
-
-    // --- RESOLVEDOR DE CÓDIGO IATA INTELIGENTE (Anti-Erro) ---
-    // Se o usuário digitou e não selecionou na lista (ex: "Viracopos", "Orlando"),
-    // fazemos uma busca rápida em segundo plano para obter o código IATA correto da Duffel.
-    const resolveIATA = async (val, apiToken) => {
-      if (!val) return '';
-      
-      // Se já começa com um código IATA padrão de 3 letras (ex: "BSB - ...", "VCP - ...")
+    // Resolvendo IATA destino para buscar hotéis correspondentes
+    const getDestinationIATA = (val) => {
+      if (!val) return 'MIA';
       const directMatch = val.trim().match(/^([A-Z]{3})\b/i);
-      if (directMatch) {
-        return directMatch[1].toUpperCase();
-      }
-
-      // Caso contrário, limpa o texto para buscar o melhor aeroporto correspondente
-      let cleanQuery = val.toLowerCase();
-      const noiseWords = [
-        'aeroporto', 'airport', 'internacional', 'international',
-        'em', 'no', 'na', 'de', 'do', 'da', 'para', 'to',
-        'eua', 'usa', 'br', 'brasil', 'brazil'
-      ];
-      noiseWords.forEach(word => {
-        const regex = new RegExp(`\\b${word}\\b`, 'gi');
-        cleanQuery = cleanQuery.replace(regex, ' ');
-      });
-      cleanQuery = cleanQuery.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ');
-      cleanQuery = cleanQuery.replace(/\s+/g, ' ').trim();
-
-      const parts = cleanQuery.split(' ');
-      if (parts.length > 1) {
-        const lastPart = parts[parts.length - 1];
-        if (lastPart.length === 2 && /^[a-z]{2}$/i.test(lastPart)) {
-          parts.pop();
-          cleanQuery = parts.join(' ');
-        }
-      }
-
-      if (!cleanQuery) cleanQuery = val.trim();
-
-      try {
-        const res = await fetch(`https://api.duffel.com/places/suggestions?query=${encodeURIComponent(cleanQuery)}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${apiToken}`,
-            'Duffel-Version': 'v2',
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          const places = json.data || [];
-          if (places.length > 0) {
-            return places[0].iata_code.toUpperCase();
-          }
-        }
-      } catch (error) {
-        console.error('Error resolving IATA for:', val, error);
-      }
-
-      // Fallback padrão
+      if (directMatch) return directMatch[1].toUpperCase();
       return val.substring(0, 3).toUpperCase();
     };
+    const destinationIATA = getDestinationIATA(destination);
 
-    const originIATA = await resolveIATA(origin, token);
-    const destinationIATA = await resolveIATA(destination, token);
-
-    // 1. Chamar busca de voos reais da Duffel
-    const slices = [
-      {
-        origin: originIATA,
-        destination: destinationIATA,
-        departure_date: departureDate,
-      }
-    ];
-
-    if (returnDate) {
-      slices.push({
-        origin: destinationIATA,
-        destination: originIATA,
-        departure_date: returnDate,
-      });
-    }
-
-    const passengers = [];
-    for (let i = 0; i < Number(adults); i++) {
-      passengers.push({ type: 'adult' });
-    }
-    for (let i = 0; i < Number(children); i++) {
-      passengers.push({ type: 'child' });
-    }
-
-    const flightRes = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true', {
+    // Chamar a rota interna de busca de voos (/api/search-flights)
+    const originUrl = new URL('/api/search-flights', request.url).toString();
+    const searchFlightsRes = await fetch(originUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Duffel-Version': 'v2',
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        data: {
-          slices,
-          passengers,
-          cabin_class: 'economy',
-        }
-      }),
+        origin,
+        destination,
+        departureDate,
+        returnDate,
+        adults,
+        children,
+        nonStop,
+        profile
+      })
     });
 
     let offers = [];
-    let offerRequestId = '';
-    if (flightRes.ok) {
-      const flightJson = await flightRes.json();
-      offers = flightJson.data.offers || [];
-      offerRequestId = flightJson.data.id;
+    if (searchFlightsRes.ok) {
+      const flightJson = await searchFlightsRes.json();
+      offers = flightJson.offers || [];
     } else {
-      const errText = await flightRes.text();
-      console.error('Duffel Search API fail in package route:', errText);
-      return NextResponse.json({ error: 'Erro ao buscar voos reais na Duffel' }, { status: 500 });
+      console.error('Failed to query flight search inside search-packages route');
+      return NextResponse.json({ error: 'Erro ao buscar voos reais' }, { status: 500 });
     }
 
     // Calcular noites de hotel
@@ -266,146 +212,14 @@ export async function POST(request) {
     const d2 = returnDate ? new Date(returnDate) : new Date(d1.getTime() + 24 * 60 * 60 * 1000);
     const nights = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
 
-    // --- COBRANÇA EM REAIS (SISTEMA FINANCEIRO BRASILEIRO) ---
-    // Busca taxas de câmbio reais para converter USD/EUR/GBP para BRL
-    let rates = { BRL: 5.30 };
-    try {
-      const rateRes = await fetch('https://open.er-api.com/v6/latest/USD');
-      if (rateRes.ok) {
-        const rateJson = await rateRes.json();
-        rates = rateJson.rates || rates;
-      }
-    } catch (err) {
-      console.error('Error fetching exchange rates in package route:', err);
-    }
-
-    const convertToBRL = (amount, fromCurrency) => {
-      const currency = (fromCurrency || 'BRL').toUpperCase();
-      if (currency === 'BRL') return amount;
-      
-      if (currency === 'USD') {
-        const rate = rates.BRL || 5.30;
-        return amount * rate;
-      }
-      
-      const rateToUSD = rates[currency] ? (1 / rates[currency]) : (currency === 'EUR' ? 1.09 : currency === 'GBP' ? 1.27 : 1.0);
-      const usdAmount = amount * rateToUSD;
-      const rateUSDtoBRL = rates.BRL || 5.30;
-      return usdAmount * rateUSDtoBRL;
-    };
-
-    // 2. Acionar motor de hotéis reais (com fallback)
+    // Acionar motor de hotéis reais
     let hotels = HOTELS_DB[destinationIATA] || generateDynamicHotels(destinationIATA);
-
-    // Mapeamento e cálculo de pacotes (Voos + Hotéis)
-    // Combinamos os voos com os hotéis de forma elegante
     const packages = [];
 
-    // Formatar voos
-    const formattedFlights = offers.slice(0, 10).map(offer => {
-      const outboundSlice = offer.slices[0];
-      const inboundSlice = offer.slices[1] || null;
-
-      const getSliceDetails = (slice) => {
-        if (!slice) return null;
-        const firstSeg = slice.segments[0];
-        const lastSeg = slice.segments[slice.segments.length - 1];
-        
-        const carrier = firstSeg?.marketing_carrier || firstSeg?.operating_carrier || { name: 'Companhia Aérea', iata_code: 'XX' };
-        
-        const depTime = firstSeg ? new Date(firstSeg.departing_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-        const arrTime = lastSeg ? new Date(lastSeg.arriving_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-        const depDate = firstSeg ? new Date(firstSeg.departing_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
-        const arrDate = lastSeg ? new Date(lastSeg.arriving_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
-
-        const stopsCount = slice.segments.length - 1;
-        const stopsText = stopsCount === 0 ? 'Direto' : `${stopsCount} escala${stopsCount > 1 ? 's' : ''}`;
-        const connections = slice.segments.slice(0, -1).map(seg => seg.destination.iata_code).join(', ');
-
-        let friendlyDuration = 'N/A';
-        if (slice.duration) {
-          const hoursMatch = slice.duration.match(/(\d+)H/);
-          const minsMatch = slice.duration.match(/(\d+)M/);
-          const hrs = hoursMatch ? hoursMatch[1] + 'h' : '';
-          const mins = minsMatch ? minsMatch[1] + 'm' : '';
-          friendlyDuration = `${hrs} ${mins}`.trim();
-        }
-
-        const segments = slice.segments.map(seg => {
-          let segDuration = 'N/A';
-          if (seg.duration) {
-            const hoursMatch = seg.duration.match(/(\d+)H/);
-            const minsMatch = seg.duration.match(/(\d+)M/);
-            const hrs = hoursMatch ? hoursMatch[1] + 'h' : '';
-            const mins = minsMatch ? minsMatch[1] + 'm' : '';
-            segDuration = `${hrs} ${mins}`.trim();
-          }
-
-          const carrierCode = seg.marketing_carrier?.iata_code || 'XX';
-          const flightNum = seg.marketing_carrier_flight_number || '';
-
-          return {
-            id: seg.id,
-            origin: seg.origin?.iata_code,
-            originName: seg.origin?.name,
-            originCity: seg.origin?.city_name,
-            destination: seg.destination?.iata_code,
-            destinationName: seg.destination?.name,
-            destinationCity: seg.destination?.city_name,
-            airline: seg.marketing_carrier?.name || 'Companhia Aérea',
-            airlineCode: carrierCode,
-            flightNumber: flightNum,
-            depTime: new Date(seg.departing_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            arrTime: new Date(seg.arriving_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            depDate: new Date(seg.departing_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-            arrDate: new Date(seg.arriving_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-            duration: segDuration,
-            aircraft: seg.aircraft?.name || null,
-            cabin: seg.passengers?.[0]?.cabin_class_marketing_name || 'Econômica',
-            baggageText: seg.passengers?.[0]?.baggages?.map(b => `${b.quantity} bagagem ${b.type === 'checked' ? 'despachada (23kg)' : 'de mão (10kg)'}`).join(', ') || '1 bagagem de mão (10kg)',
-            fareBasisCode: seg.passengers?.[0]?.fare_basis_code || 'N/A',
-            trackingLink: `https://www.flightradar24.com/data/flights/${carrierCode.toLowerCase()}${flightNum.toLowerCase()}`
-          };
-        });
-
-        return {
-          airline: carrier.name,
-          airlineCode: carrier.iata_code,
-          depTime,
-          arrTime,
-          depDate,
-          arrDate,
-          stopsCount,
-          stopsText,
-          connections,
-          duration: friendlyDuration,
-          segments
-        };
-      };
-
-      const outbound = getSliceDetails(outboundSlice);
-      const inbound = getSliceDetails(inboundSlice);
-
-      const rawPrice = parseFloat(offer.total_amount);
-      const convertedPrice = convertToBRL(rawPrice, offer.total_currency);
-
-      return {
-        id: offer.id,
-        price: Number(convertedPrice.toFixed(2)),
-        currency: 'BRL',
-        originalPrice: rawPrice,
-        originalCurrency: offer.total_currency || 'USD',
-        outbound,
-        inbound,
-        airline: outbound?.airline || 'Multi-Airline',
-        airlineCode: outbound?.airlineCode || 'XX',
-        guaranteed: true,
-      };
-    });
-
-    // Combinar o voo mais barato com os hotéis disponíveis para criar as opções de Pacote
-    if (formattedFlights.length > 0) {
-      const bestFlight = formattedFlights[0];
+    // Combinar voos com hotéis
+    if (offers.length > 0) {
+      // Usar a melhor opção de voo
+      const bestFlight = offers[0];
 
       hotels.forEach(hotel => {
         const hotelTotalPrice = hotel.dailyRate * nights;
@@ -423,13 +237,13 @@ export async function POST(request) {
           },
           price: packageTotalPrice,
           currency: 'BRL',
-          guaranteed: true,
+          guaranteed: true
         });
       });
 
-      // Se houver mais voos, podemos criar opções adicionais para dar variedade de escolha ao agente
-      if (formattedFlights.length > 1) {
-        const secondFlight = formattedFlights[1];
+      // Adicionar segunda opção de voo se houver para dar variedade
+      if (offers.length > 1) {
+        const secondFlight = offers[1];
         hotels.slice(0, 1).forEach(hotel => {
           const hotelTotalPrice = hotel.dailyRate * nights;
           const packageTotalPrice = secondFlight.price + hotelTotalPrice;
@@ -446,22 +260,21 @@ export async function POST(request) {
             },
             price: packageTotalPrice,
             currency: 'BRL',
-            guaranteed: true,
+            guaranteed: true
           });
         });
       }
     }
 
-    // Ordena pacotes por preço
     packages.sort((a, b) => a.price - b.price);
     if (packages.length > 0) {
+      packages.forEach(p => p.isCheapest = false);
       packages[0].isCheapest = true;
     }
 
     return NextResponse.json({
-      offerRequestId,
       nights,
-      packages,
+      packages
     });
 
   } catch (error) {

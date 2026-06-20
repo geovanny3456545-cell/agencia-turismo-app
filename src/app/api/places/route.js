@@ -24,6 +24,47 @@ const LOCAL_AIRPORTS = [
   { iata_code: 'GYN', name: 'Santa Genoveva Airport', city_name: 'Goiânia / GO', country_name: 'Brasil', type: 'airport', id: 'arp_gyn_br', city: { name: 'Goiânia / GO' } }
 ];
 
+let cachedToken = null;
+let tokenExpiry = 0;
+
+async function getAmadeusToken() {
+  const now = Date.now();
+  if (cachedToken && now < tokenExpiry) {
+    return cachedToken;
+  }
+
+  const clientId = process.env.AMADEUS_CLIENT_ID;
+  const clientSecret = process.env.AMADEUS_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  try {
+    const res = await fetch('https://test.api.amadeus.com/v1/security/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      cachedToken = data.access_token;
+      tokenExpiry = now + (data.expires_in - 60) * 1000; // Subtract 60 seconds buffer
+      return cachedToken;
+    }
+  } catch (error) {
+    console.error('Error fetching Amadeus OAuth2 Token:', error);
+  }
+  return null;
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('query');
@@ -32,11 +73,8 @@ export async function GET(request) {
     return NextResponse.json([]);
   }
 
-  const token = process.env.DUFFEL_ACCESS_TOKEN || Buffer.from('ZHVmZmVsX3Rlc3RfVXlrclZDNWFFOFV1bjQxLWszZ2N4QndZeVBQTzhpbG9sTnZQVXA0R0JyNg==', 'base64').toString('utf-8');
-
   // --- PROCESSADOR INTELIGENTE DE BUSCA (Anti-Ruído) ---
   let cleanQuery = query.toLowerCase();
-
   const noiseWords = [
     'aeroporto', 'airport', 'internacional', 'international',
     'em', 'no', 'na', 'de', 'do', 'da', 'para', 'to',
@@ -64,10 +102,6 @@ export async function GET(request) {
     cleanQuery = query.trim();
   }
 
-  console.log(`Original query: "${query}" -> Smart clean query: "${cleanQuery}"`);
-
-  // Se a chave Duffel não estiver configurada no Vercel (undefined) ou se a consulta falhar,
-  // usaremos a busca em nosso banco de aeroportos locais de forma transparente.
   const executeLocalSearch = () => {
     const term = cleanQuery.toLowerCase();
     return LOCAL_AIRPORTS.filter(place => {
@@ -80,37 +114,46 @@ export async function GET(request) {
     });
   };
 
+  const token = await getAmadeusToken();
+
   if (!token) {
-    console.log('Duffel API Token missing on Vercel. Executing Local Search Engine Fallback.');
+    console.log('Amadeus API credentials missing or token failed. Falling back to Local Search.');
     return NextResponse.json(executeLocalSearch());
   }
 
   try {
-    const res = await fetch(`https://api.duffel.com/places/suggestions?query=${encodeURIComponent(cleanQuery)}`, {
+    const res = await fetch(`https://test.api.amadeus.com/v1/reference-data/locations?subType=AIRPORT,CITY&keyword=${encodeURIComponent(cleanQuery)}&page[limit]=10`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Duffel-Version': 'v2',
-        'Content-Type': 'application/json',
-      },
+        'Authorization': `Bearer ${token}`
+      }
     });
 
     if (!res.ok) {
-      console.warn(`Duffel API places error ${res.status}. Falling back to Local Search.`);
+      console.warn(`Amadeus API places error ${res.status}. Falling back to Local Search.`);
       return NextResponse.json(executeLocalSearch());
     }
 
     const json = await res.json();
-    const places = json.data || [];
+    const locations = json.data || [];
     
-    // Se a Duffel por algum motivo retornar lista vazia, faz o fallback local para garantir
+    const places = locations.map(loc => ({
+      iata_code: loc.iataCode,
+      name: loc.name,
+      city_name: loc.address?.cityName,
+      country_name: loc.address?.countryName,
+      type: loc.subType.toLowerCase(),
+      id: loc.id,
+      city: { name: loc.address?.cityName }
+    }));
+
     if (places.length === 0) {
       return NextResponse.json(executeLocalSearch());
     }
     
     return NextResponse.json(places);
   } catch (error) {
-    console.error('PLACES API ROUTE ERROR, falling back to Local Search:', error);
+    console.error('AMADEUS PLACES API ERROR, falling back to Local Search:', error);
     return NextResponse.json(executeLocalSearch());
   }
 }
