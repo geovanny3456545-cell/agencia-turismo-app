@@ -8,6 +8,11 @@ export default function OrcamentoCliente({ params }) {
   const [seguroAdicionado, setSeguroAdicionado] = useState(false);
   const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expandedSlices, setExpandedSlices] = useState({});
+
+  const toggleSliceExpand = (idx) => {
+    setExpandedSlices(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
 
   useEffect(() => {
     // 1. Tentar ler os dados da reserva a partir do Token Base64 na URL (Garante 100% de persistência no Vercel)
@@ -181,7 +186,7 @@ export default function OrcamentoCliente({ params }) {
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '18px', color: 'var(--primary-color)' }}>
                       {slice.origin?.iata_code || slice.origin || 'ORIGEM'}
                     </h4>
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.depTime || slice.segments?.[0]?.departing_at?.split('T')?.[1]?.substring(0, 5) || '10:00'}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.depTime || slice.segments?.[0]?.depTime || '10:00'}</span>
                   </div>
 
                   <div>
@@ -200,9 +205,93 @@ export default function OrcamentoCliente({ params }) {
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '18px', color: 'var(--primary-color)' }}>
                       {slice.destination?.iata_code || slice.destination || 'DESTINO'}
                     </h4>
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.arrTime || slice.segments?.[slice.segments.length - 1]?.arriving_at?.split('T')?.[1]?.substring(0, 5) || '16:30'}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.arrTime || slice.segments?.[slice.segments.length - 1]?.arrTime || '16:30'}</span>
                   </div>
                 </div>
+
+                {slice.segments && slice.segments.length > 0 && (
+                  <div style={{ borderTop: '1px dashed #ddd', padding: '0 15px 15px 15px', backgroundColor: '#fafafa' }}>
+                    <button 
+                      type="button"
+                      onClick={() => toggleSliceExpand(sliceIdx)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--secondary-color)',
+                        fontWeight: 'bold',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '10px 0',
+                        width: '100%',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                        outline: 'none'
+                      }}
+                    >
+                      {expandedSlices[sliceIdx] ? '▲ Ocultar Conexões e Rastreamento' : '▼ Ver Voos, Conexões e Rastreamento'}
+                    </button>
+                    
+                    {expandedSlices[sliceIdx] && (
+                      <div style={{ display: 'grid', gap: '12px', marginTop: '5px', animation: 'fadeIn 0.2s ease-out' }}>
+                        {slice.segments.map((seg, segIdx) => (
+                          <div key={seg.id || segIdx} style={{ 
+                            backgroundColor: '#fff', 
+                            border: '1px solid #e9ecef', 
+                            borderRadius: '6px', 
+                            padding: '12px 15px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                            textAlign: 'left'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: 'var(--primary-color)', fontSize: '13px' }}>
+                              <span>✈️ Voo: {seg.airlineCode} {seg.flightNumber} ({seg.airline})</span>
+                              {seg.trackingLink && (
+                                <a 
+                                  href={seg.trackingLink} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  style={{ color: 'var(--secondary-color)', fontSize: '12px', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '2px' }}
+                                >
+                                  🛰️ Rastrear
+                                </a>
+                              )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12.5px', color: '#444' }}>
+                              <div>
+                                <strong>Origem:</strong> {seg.originCity || seg.origin} ({seg.origin})<br/>
+                                📅 Partida: {seg.depDate} às {seg.depTime}
+                              </div>
+                              <div>
+                                <strong>Destino:</strong> {seg.destinationCity || seg.destination} ({seg.destination})<br/>
+                                📅 Chegada: {seg.arrDate} às {seg.arrTime}
+                              </div>
+                            </div>
+                            <div style={{ 
+                              display: 'flex', 
+                              gap: '12px', 
+                              flexWrap: 'wrap', 
+                              fontSize: '11.5px', 
+                              color: 'var(--text-secondary)', 
+                              borderTop: '1px dashed #eee', 
+                              paddingTop: '6px', 
+                              marginTop: '2px' 
+                            }}>
+                              <span>💼 {seg.baggageText || '1 mala de mão (10kg) inclusa'}</span>
+                              {seg.cabin && <span>💺 Cabine: {seg.cabin}</span>}
+                              {seg.aircraft && <span>✈️ Aeronave: {seg.aircraft}</span>}
+                              {seg.fareBasisCode && <span>🏷️ Tarifa: {seg.fareBasisCode}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
 

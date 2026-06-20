@@ -201,6 +201,7 @@ export default function Dashboard() {
     const isPackage = searchType === 'pacote';
     const offerId = isPackage ? selectedItem.flight.id : selectedItem.id;
     const hotelDetails = isPackage ? selectedItem.hotel : null;
+    const flightDetails = isPackage ? selectedItem.flight : selectedItem;
 
     try {
       const res = await fetch('/api/book', {
@@ -210,6 +211,7 @@ export default function Dashboard() {
           offerId,
           passengerDetails: passengersData,
           hotelDetails,
+          flightDetails,
           searchParams: {
             origin,
             destination,
