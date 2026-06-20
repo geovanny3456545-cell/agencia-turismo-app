@@ -9,17 +9,24 @@ export default function OrcamentoCliente({ params }) {
   const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedSlices, setExpandedSlices] = useState({});
+  const [shareUrl, setShareUrl] = useState('');
 
   const toggleSliceExpand = (idx) => {
     setExpandedSlices(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setShareUrl(window.location.href);
+    }
+  }, []);
+
+  useEffect(() => {
     // 1. Tentar ler os dados da reserva a partir do Token Base64 na URL (Garante 100% de persistência no Vercel)
     const token = searchParams.get('token');
     if (token) {
       try {
-        const decoded = JSON.parse(atob(token));
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
         setBookingData(decoded);
         setLoading(false);
         return;
@@ -92,7 +99,12 @@ export default function OrcamentoCliente({ params }) {
   };
 
   const getWhatsAppLink = () => {
-    const text = `*Euro Tur Viagens* ✈️\n\nOlá, *${orcamento.passengerDetails[0]?.givenName || 'Cliente'}*!\n\nAqui está o seu *Orçamento de Viagem Oficial* para *${hasHotel ? orcamento.hotel.address.split(',')[1] || 'seu destino' : orcamento.flight.slices[0]?.destination || 'seu destino'}*.\n\n🔒 *Código Localizador (Hold GDS):* ${orcamento.localizer}\n💰 *Preço Promocional:* R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\nVisualizar roteiro completo, fotos do hotel e franquia de bagagem no link abaixo:\n${window.location.href}`;
+    const destinationText = hasHotel 
+      ? (orcamento.hotel?.address?.split(',')[1] || 'seu destino') 
+      : (orcamento.flight?.slices?.[0]?.destination || 'seu destino');
+    
+    const passengerName = orcamento.passengerDetails?.[0]?.givenName || orcamento.passengerDetails?.[0]?.given_name || 'Cliente';
+    const text = `*Euro Tur Viagens* ✈️\n\nOlá, *${passengerName}*!\n\nAqui está o seu *Orçamento de Viagem Oficial* para *${destinationText}*.\n\n🔒 *Código Localizador (Hold GDS):* ${orcamento.localizer}\n💰 *Preço Promocional:* R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\nVisualizar roteiro completo, fotos do hotel e franquia de bagagem no link abaixo:\n${shareUrl}`;
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   };
 
@@ -100,7 +112,7 @@ export default function OrcamentoCliente({ params }) {
   const getExpiresFormatted = (isoStr) => {
     if (!isoStr) return '24 horas';
     const date = new Date(isoStr);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + 'h';
+    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + 'h';
   };
 
   return (
