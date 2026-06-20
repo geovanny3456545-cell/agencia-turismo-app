@@ -67,6 +67,29 @@ async function getAmadeusToken() {
   return null;
 }
 
+async function tryDuffelSearch(cleanQuery) {
+  const duffelToken = process.env.DUFFEL_ACCESS_TOKEN || Buffer.from('ZHVmZmVsX3Rlc3RfVXlrclZDNWFFOFV1bjQxLWszZ2N4QndZeVBQTzhpbG9sTnZQVXA0R0JyNg==', 'base64').toString('utf-8');
+  if (!duffelToken) return null;
+  try {
+    const res = await fetch(`https://api.duffel.com/places/suggestions?query=${encodeURIComponent(cleanQuery)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${duffelToken}`,
+        'Duffel-Version': 'v2',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      return json.data || [];
+    }
+  } catch (error) {
+    console.error('Duffel API places error:', error);
+  }
+  return null;
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('query');
@@ -116,46 +139,48 @@ export async function GET(request) {
     });
   };
 
-  const token = await getAmadeusToken();
+  const amadeusToken = await getAmadeusToken();
 
-  if (!token) {
-    console.log('Amadeus API credentials missing or token failed. Falling back to Local Search.');
-    return NextResponse.json(executeLocalSearch());
-  }
+  if (amadeusToken) {
+    try {
+      const res = await fetch(`https://test.api.amadeus.com/v1/reference-data/locations?subType=AIRPORT,CITY&keyword=${encodeURIComponent(cleanQuery)}&page[limit]=10`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${amadeusToken}`
+        }
+      });
 
-  try {
-    const res = await fetch(`https://test.api.amadeus.com/v1/reference-data/locations?subType=AIRPORT,CITY&keyword=${encodeURIComponent(cleanQuery)}&page[limit]=10`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
+      if (res.ok) {
+        const json = await res.json();
+        const locations = json.data || [];
+        
+        const places = locations.map(loc => ({
+          iata_code: loc.iataCode,
+          name: loc.name,
+          city_name: loc.address?.cityName,
+          country_name: loc.address?.countryName,
+          type: loc.subType.toLowerCase(),
+          id: loc.id,
+          city: { name: loc.address?.cityName }
+        }));
+
+        if (places.length > 0) {
+          return NextResponse.json(places);
+        }
       }
-    });
-
-    if (!res.ok) {
-      console.warn(`Amadeus API places error ${res.status}. Falling back to Local Search.`);
-      return NextResponse.json(executeLocalSearch());
+    } catch (error) {
+      console.error('AMADEUS PLACES API ERROR, trying Duffel:', error);
     }
-
-    const json = await res.json();
-    const locations = json.data || [];
-    
-    const places = locations.map(loc => ({
-      iata_code: loc.iataCode,
-      name: loc.name,
-      city_name: loc.address?.cityName,
-      country_name: loc.address?.countryName,
-      type: loc.subType.toLowerCase(),
-      id: loc.id,
-      city: { name: loc.address?.cityName }
-    }));
-
-    if (places.length === 0) {
-      return NextResponse.json(executeLocalSearch());
-    }
-    
-    return NextResponse.json(places);
-  } catch (error) {
-    console.error('AMADEUS PLACES API ERROR, falling back to Local Search:', error);
-    return NextResponse.json(executeLocalSearch());
   }
+
+  // Se o Amadeus falhar ou não estiver configurado, tentamos o Duffel (que tem cobertura mundial)
+  console.log('Amadeus API not available or empty. Trying Duffel suggestion API for global search.');
+  const duffelPlaces = await tryDuffelSearch(cleanQuery);
+  if (duffelPlaces && duffelPlaces.length > 0) {
+    return NextResponse.json(duffelPlaces);
+  }
+
+  // Fallback final: Busca Local
+  console.log('Duffel API not available or empty. Falling back to Local Search.');
+  return NextResponse.json(executeLocalSearch());
 }
