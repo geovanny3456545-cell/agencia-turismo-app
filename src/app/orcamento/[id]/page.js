@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useSearchParams } from 'next/navigation';
 import '../../globals.css';
 
 export default function OrcamentoCliente({ params }) {
+  const resolvedParams = use(params);
   const searchParams = useSearchParams();
   const [seguroAdicionado, setSeguroAdicionado] = useState(false);
   const [bookingData, setBookingData] = useState(null);
@@ -36,7 +37,7 @@ export default function OrcamentoCliente({ params }) {
     }
 
     // 2. Fallback: Buscar do servidor (localmente)
-    const bookingId = params?.id;
+    const bookingId = resolvedParams.id;
     if (bookingId) {
       fetch(`/api/booking/${bookingId}`)
         .then(res => res.json())
@@ -50,7 +51,7 @@ export default function OrcamentoCliente({ params }) {
     } else {
       setLoading(false);
     }
-  }, [params, searchParams]);
+  }, [resolvedParams, searchParams]);
 
   if (loading) {
     return (
@@ -64,7 +65,7 @@ export default function OrcamentoCliente({ params }) {
 
   // Se não encontrar dados reais da reserva, usa um mock refinado de alto nível
   const orcamento = bookingData || {
-    id: params?.id || 'EURO-2938',
+    id: resolvedParams.id || 'EURO-2938',
     localizer: 'EUR-884930',
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
