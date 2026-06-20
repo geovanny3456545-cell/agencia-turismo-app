@@ -363,17 +363,17 @@ export default function Dashboard() {
         </h2>
 
         {/* Histórico das Últimas 3 Buscas */}
-        {recentSearches.length > 0 && (
-          <div style={{ 
-            marginBottom: '25px', 
-            padding: '16px 20px', 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: '8px', 
-            border: '1px solid #e9ecef' 
-          }}>
-            <strong style={{ fontSize: '13px', color: '#495057', display: 'block', marginBottom: '8px' }}>
-              🕒 Reutilizar Busca Recente:
-            </strong>
+        <div style={{ 
+          marginBottom: '25px', 
+          padding: '16px 20px', 
+          backgroundColor: '#f8f9fa', 
+          borderRadius: '8px', 
+          border: '1px solid #e9ecef' 
+        }}>
+          <strong style={{ fontSize: '13px', color: '#495057', display: 'block', marginBottom: recentSearches.length > 0 ? '8px' : '0' }}>
+            🕒 Reutilizar Busca Recente:
+          </strong>
+          {recentSearches.length > 0 ? (
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               {recentSearches.map((search, idx) => {
                 // Formatar texto descritivo
@@ -411,8 +411,12 @@ export default function Dashboard() {
                 );
               })}
             </div>
-          </div>
-        )}
+          ) : (
+            <span style={{ fontSize: '12.5px', color: '#868e96', fontStyle: 'italic' }}>
+              Nenhuma busca recente. Suas pesquisas anteriores aparecerão aqui.
+            </span>
+          )}
+        </div>
         
         {/* Alternador de Busca com micro-animações */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '30px' }}>
