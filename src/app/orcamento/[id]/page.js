@@ -218,7 +218,7 @@ export default function OrcamentoCliente({ params }) {
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '18px', color: 'var(--primary-color)' }}>
                       {slice.destination?.iata_code || slice.destination || 'DESTINO'}
                     </h4>
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.arrTime || slice.segments?.[slice.segments.length - 1]?.arrTime || '16:30'}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.arrTime || slice.segments?.[slice.segments?.length - 1]?.arrTime || '16:30'}</span>
                   </div>
                 </div>
 
