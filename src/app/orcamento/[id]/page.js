@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import '../../globals.css';
 
 function OrcamentoClienteContent({ params }) {
-  const resolvedParams = use(params);
+  const resolvedParams = (params && typeof params.then === 'function') ? use(params) : params;
   const searchParams = useSearchParams();
   const [seguroAdicionado, setSeguroAdicionado] = useState(false);
   const [bookingData, setBookingData] = useState(null);
@@ -49,7 +49,7 @@ function OrcamentoClienteContent({ params }) {
     }
 
     // 2. Fallback: Buscar do servidor (localmente)
-    const bookingId = resolvedParams.id;
+    const bookingId = resolvedParams?.id;
     if (bookingId) {
       fetch(`/api/booking/${bookingId}`)
         .then(res => res.json())
@@ -77,7 +77,7 @@ function OrcamentoClienteContent({ params }) {
 
   // Se não encontrar dados reais da reserva, usa um mock refinado de alto nível
   const orcamento = bookingData || {
-    id: resolvedParams.id || 'EURO-2938',
+    id: resolvedParams?.id || 'EURO-2938',
     localizer: 'EUR-884930',
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -112,9 +112,11 @@ function OrcamentoClienteContent({ params }) {
   };
 
   const getWhatsAppLink = () => {
+    const destObj = orcamento.flight?.slices?.[0]?.destination;
+    const destStr = typeof destObj === 'object' ? (destObj?.name || destObj?.iata_code || 'seu destino') : (destObj || 'seu destino');
     const destinationText = hasHotel 
       ? (orcamento.hotel?.address?.split(',')[1] || 'seu destino') 
-      : (orcamento.flight?.slices?.[0]?.destination || 'seu destino');
+      : destStr;
     
     const passengerName = orcamento.passengerDetails?.[0]?.givenName || orcamento.passengerDetails?.[0]?.given_name || 'Cliente';
     const text = `*Euro Tur Viagens* ✈️\n\nOlá, *${passengerName}*!\n\nAqui está o seu *Orçamento de Viagem Oficial* para *${destinationText}*.\n\n🔒 *Código Localizador (Hold GDS):* ${orcamento.localizer}\n💰 *Preço Promocional:* R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\nVisualizar roteiro completo, fotos do hotel e franquia de bagagem no link abaixo:\n${shareUrl}`;
@@ -199,126 +201,138 @@ function OrcamentoClienteContent({ params }) {
               ✈️ Detalhes dos Voos Garantidos
             </h3>
 
-            {orcamento.flight?.slices?.map((slice, sliceIdx) => (
-              <div key={sliceIdx} style={{ marginBottom: '20px', border: '1px solid #e0e0e0', borderRadius: '6px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#f8f9fa', padding: '10px 15px', fontSize: '13px', fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{sliceIdx === 0 ? '🛫 Voo de Ida' : '🛬 Voo de Volta'}</span>
-                  <span style={{ color: 'var(--secondary-color)' }}>{orcamento.flight.airline}</span>
-                </div>
-                
-                <div style={{ padding: '15px', fontSize: '14px', display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', alignItems: 'center', textAlign: 'center' }}>
-                  <div>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '18px', color: 'var(--primary-color)' }}>
-                      {slice.origin?.iata_code || slice.origin || 'ORIGEM'}
-                    </h4>
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.depTime || slice.segments?.[0]?.depTime || '10:00'}</span>
-                  </div>
+            {orcamento.flight?.slices?.map((slice, sliceIdx) => {
+              const originText = typeof slice.origin === 'object' ? (slice.origin?.iata_code || slice.origin?.name || 'ORIGEM') : (slice.origin || 'ORIGEM');
+              const destText = typeof slice.destination === 'object' ? (slice.destination?.iata_code || slice.destination?.name || 'DESTINO') : (slice.destination || 'DESTINO');
 
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                      {slice.stopsText || (slice.segments?.length > 1 ? `${slice.segments.length - 1} escalas` : 'Voo Direto')}
-                    </div>
-                    <div style={{ height: '2px', backgroundColor: '#ccc', position: 'relative', margin: '0 20px' }}>
-                      <span style={{ position: 'absolute', top: '-4px', left: '50%', transform: 'translateX(-50%)', background: '#fff', padding: '0 5px' }}>✈️</span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--secondary-color)', marginTop: '4px' }}>
-                      Duração: {slice.duration || 'N/A'}
-                    </div>
+              return (
+                <div key={sliceIdx} style={{ marginBottom: '20px', border: '1px solid #e0e0e0', borderRadius: '6px', overflow: 'hidden' }}>
+                  <div style={{ backgroundColor: '#f8f9fa', padding: '10px 15px', fontSize: '13px', fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{sliceIdx === 0 ? '🛫 Voo de Ida' : '🛬 Voo de Volta'}</span>
+                    <span style={{ color: 'var(--secondary-color)' }}>{orcamento.flight.airline}</span>
                   </div>
+                  
+                  <div style={{ padding: '15px', fontSize: '14px', display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', alignItems: 'center', textAlign: 'center' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '18px', color: 'var(--primary-color)' }}>
+                        {originText}
+                      </h4>
+                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.depTime || slice.segments?.[0]?.depTime || '10:00'}</span>
+                    </div>
 
-                  <div>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '18px', color: 'var(--primary-color)' }}>
-                      {slice.destination?.iata_code || slice.destination || 'DESTINO'}
-                    </h4>
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.arrTime || slice.segments?.[slice.segments?.length - 1]?.arrTime || '16:30'}</span>
-                  </div>
-                </div>
-
-                {slice.segments && slice.segments.length > 0 && (
-                  <div style={{ borderTop: '1px dashed #ddd', padding: '0 15px 15px 15px', backgroundColor: '#fafafa' }}>
-                    <button 
-                      type="button"
-                      onClick={() => toggleSliceExpand(sliceIdx)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--secondary-color)',
-                        fontWeight: 'bold',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '10px 0',
-                        width: '100%',
-                        justifyContent: 'center',
-                        borderRadius: '4px',
-                        outline: 'none'
-                      }}
-                    >
-                      {expandedSlices[sliceIdx] ? '▲ Ocultar Conexões e Rastreamento' : '▼ Ver Voos, Conexões e Rastreamento'}
-                    </button>
-                    
-                    {expandedSlices[sliceIdx] && (
-                      <div style={{ display: 'grid', gap: '12px', marginTop: '5px', animation: 'fadeIn 0.2s ease-out' }}>
-                        {slice.segments.map((seg, segIdx) => (
-                          <div key={seg.id || segIdx} style={{ 
-                            backgroundColor: '#fff', 
-                            border: '1px solid #e9ecef', 
-                            borderRadius: '6px', 
-                            padding: '12px 15px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                            textAlign: 'left'
-                          }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: 'var(--primary-color)', fontSize: '13px' }}>
-                              <span>✈️ Voo: {seg.airlineCode} {seg.flightNumber} ({seg.airline})</span>
-                              {seg.trackingLink && (
-                                <a 
-                                  href={seg.trackingLink} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  style={{ color: 'var(--secondary-color)', fontSize: '12px', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '2px' }}
-                                >
-                                  🛰️ Rastrear
-                                </a>
-                              )}
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12.5px', color: '#444' }}>
-                              <div>
-                                <strong>Origem:</strong> {seg.originCity || seg.origin} ({seg.origin})<br/>
-                                📅 Partida: {seg.depDate} às {seg.depTime}
-                              </div>
-                              <div>
-                                <strong>Destino:</strong> {seg.destinationCity || seg.destination} ({seg.destination})<br/>
-                                📅 Chegada: {seg.arrDate} às {seg.arrTime}
-                              </div>
-                            </div>
-                            <div style={{ 
-                              display: 'flex', 
-                              gap: '12px', 
-                              flexWrap: 'wrap', 
-                              fontSize: '11.5px', 
-                              color: 'var(--text-secondary)', 
-                              borderTop: '1px dashed #eee', 
-                              paddingTop: '6px', 
-                              marginTop: '2px' 
-                            }}>
-                              <span>💼 {seg.baggageText || '1 mala de mão (10kg) inclusa'}</span>
-                              {seg.cabin && <span>💺 Cabine: {seg.cabin}</span>}
-                              {seg.aircraft && <span>✈️ Aeronave: {seg.aircraft}</span>}
-                              {seg.fareBasisCode && <span>🏷️ Tarifa: {seg.fareBasisCode}</span>}
-                            </div>
-                          </div>
-                        ))}
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                        {slice.stopsText || (slice.segments?.length > 1 ? `${slice.segments.length - 1} escalas` : 'Voo Direto')}
                       </div>
-                    )}
+                      <div style={{ height: '2px', backgroundColor: '#ccc', position: 'relative', margin: '0 20px' }}>
+                        <span style={{ position: 'absolute', top: '-4px', left: '50%', transform: 'translateX(-50%)', background: '#fff', padding: '0 5px' }}>✈️</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--secondary-color)', marginTop: '4px' }}>
+                        Duração: {slice.duration || 'N/A'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '18px', color: 'var(--primary-color)' }}>
+                        {destText}
+                      </h4>
+                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{slice.arrTime || slice.segments?.[slice.segments?.length - 1]?.arrTime || '16:30'}</span>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {slice.segments && slice.segments.length > 0 && (
+                    <div style={{ borderTop: '1px dashed #ddd', padding: '0 15px 15px 15px', backgroundColor: '#fafafa' }}>
+                      <button 
+                        type="button"
+                        onClick={() => toggleSliceExpand(sliceIdx)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--secondary-color)',
+                          fontWeight: 'bold',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '10px 0',
+                          width: '100%',
+                          justifyContent: 'center',
+                          borderRadius: '4px',
+                          outline: 'none'
+                        }}
+                      >
+                        {expandedSlices[sliceIdx] ? '▲ Ocultar Conexões e Rastreamento' : '▼ Ver Voos, Conexões e Rastreamento'}
+                      </button>
+                      
+                      {expandedSlices[sliceIdx] && (
+                        <div style={{ display: 'grid', gap: '12px', marginTop: '5px', animation: 'fadeIn 0.2s ease-out' }}>
+                          {slice.segments.map((seg, segIdx) => {
+                            const segOrigin = typeof seg.origin === 'object' ? (seg.origin?.iata_code || seg.origin?.name || '') : (seg.origin || '');
+                            const segDest = typeof seg.destination === 'object' ? (seg.destination?.iata_code || seg.destination?.name || '') : (seg.destination || '');
+                            const segOriginCity = typeof seg.originCity === 'object' ? (seg.originCity?.name || '') : (seg.originCity || '');
+                            const segDestCity = typeof seg.destinationCity === 'object' ? (seg.destinationCity?.name || '') : (seg.destinationCity || '');
+
+                            return (
+                              <div key={seg.id || segIdx} style={{ 
+                                backgroundColor: '#fff', 
+                                border: '1px solid #e9ecef', 
+                                borderRadius: '6px', 
+                                padding: '12px 15px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                textAlign: 'left'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: 'var(--primary-color)', fontSize: '13px' }}>
+                                  <span>✈️ Voo: {seg.airlineCode} {seg.flightNumber} ({seg.airline})</span>
+                                  {seg.trackingLink && (
+                                    <a 
+                                      href={seg.trackingLink} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      style={{ color: 'var(--secondary-color)', fontSize: '12px', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '2px' }}
+                                    >
+                                      🛰️ Rastrear
+                                    </a>
+                                  )}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12.5px', color: '#444' }}>
+                                  <div>
+                                    <strong>Origem:</strong> {segOriginCity || segOrigin} ({segOrigin})<br/>
+                                    📅 Partida: {seg.depDate} às {seg.depTime}
+                                  </div>
+                                  <div>
+                                    <strong>Destino:</strong> {segDestCity || segDest} ({segDest})<br/>
+                                    📅 Chegada: {seg.arrDate} às {seg.arrTime}
+                                  </div>
+                                </div>
+                                <div style={{ 
+                                  display: 'flex', 
+                                  gap: '12px', 
+                                  flexWrap: 'wrap', 
+                                  fontSize: '11.5px', 
+                                  color: 'var(--text-secondary)', 
+                                  borderTop: '1px dashed #eee', 
+                                  paddingTop: '6px', 
+                                  marginTop: '2px' 
+                                }}>
+                                  <span>💼 {seg.baggageText || '1 mala de mão (10kg) inclusa'}</span>
+                                  {seg.cabin && <span>💺 Cabine: {seg.cabin}</span>}
+                                  {seg.aircraft && <span>✈️ Aeronave: {seg.aircraft}</span>}
+                                  {seg.fareBasisCode && <span>🏷️ Tarifa: {seg.fareBasisCode}</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '0 5px' }}>
               💼 <strong>Franquia de bagagem inclusa:</strong> 1 mala de mão de até 10kg por passageiro + item pessoal.
@@ -342,7 +356,7 @@ function OrcamentoClienteContent({ params }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <h4 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '18px' }}>{orcamento.hotel.name}</h4>
                     <div style={{ color: 'var(--accent-color)' }}>
-                      {'★'.repeat(orcamento.hotel.stars)}
+                      {'★'.repeat(Number(orcamento.hotel.stars) || 0)}
                     </div>
                   </div>
                   <small style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '10px' }}>

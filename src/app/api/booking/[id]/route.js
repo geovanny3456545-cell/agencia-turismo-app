@@ -5,7 +5,7 @@ import path from 'path';
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
-    const bookingId = resolvedParams.id;
+    const bookingId = resolvedParams?.id;
 
     if (!bookingId) {
       return NextResponse.json({ error: 'ID da reserva ausente' }, { status: 400 });

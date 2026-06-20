@@ -47,7 +47,7 @@ export async function POST(request) {
     if (flightDetails && flightDetails.outbound) {
       slices.push({
         origin: flightDetails.outbound.segments?.[0]?.origin || searchParams.origin || 'BSB',
-        destination: flightDetails.outbound.segments?.[flightDetails.outbound.segments.length - 1]?.destination || searchParams.destination || 'DUB',
+        destination: flightDetails.outbound.segments?.[(flightDetails.outbound.segments?.length || 1) - 1]?.destination || searchParams.destination || 'DUB',
         departureDate: flightDetails.outbound.depDate,
         arrivalDate: flightDetails.outbound.arrDate,
         stopsText: flightDetails.outbound.stopsText || 'Voo Direto',
@@ -60,7 +60,7 @@ export async function POST(request) {
     if (flightDetails && flightDetails.inbound) {
       slices.push({
         origin: flightDetails.inbound.segments?.[0]?.origin || searchParams.destination || 'DUB',
-        destination: flightDetails.inbound.segments?.[flightDetails.inbound.segments.length - 1]?.destination || searchParams.origin || 'BSB',
+        destination: flightDetails.inbound.segments?.[(flightDetails.inbound.segments?.length || 1) - 1]?.destination || searchParams.origin || 'BSB',
         departureDate: flightDetails.inbound.depDate,
         arrivalDate: flightDetails.inbound.arrDate,
         stopsText: flightDetails.inbound.stopsText || 'Voo Direto',
