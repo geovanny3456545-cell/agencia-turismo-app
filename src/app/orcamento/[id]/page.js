@@ -1,11 +1,13 @@
 'use client';
-import { useState, useEffect, use, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import '../../globals.css';
 
-function OrcamentoClienteContent({ params }) {
-  const resolvedParams = (params && typeof params.then === 'function') ? use(params) : params;
+function OrcamentoClienteContent() {
+  const params = useParams();
   const searchParams = useSearchParams();
+  const bookingId = params?.id;
+
   const [seguroAdicionado, setSeguroAdicionado] = useState(false);
   const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,6 @@ function OrcamentoClienteContent({ params }) {
     }
 
     // 2. Fallback: Buscar do servidor (localmente)
-    const bookingId = resolvedParams?.id;
     if (bookingId) {
       fetch(`/api/booking/${bookingId}`)
         .then(res => res.json())
@@ -63,7 +64,7 @@ function OrcamentoClienteContent({ params }) {
     } else {
       setLoading(false);
     }
-  }, [resolvedParams, searchParams]);
+  }, [bookingId, searchParams]);
 
   if (loading) {
     return (
@@ -77,7 +78,7 @@ function OrcamentoClienteContent({ params }) {
 
   // Se não encontrar dados reais da reserva, usa um mock refinado de alto nível
   const orcamento = bookingData || {
-    id: resolvedParams?.id || 'EURO-2938',
+    id: bookingId || 'EURO-2938',
     localizer: 'EUR-884930',
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -471,7 +472,7 @@ function OrcamentoClienteContent({ params }) {
   );
 }
 
-export default function OrcamentoCliente({ params }) {
+export default function OrcamentoCliente() {
   return (
     <Suspense fallback={
       <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -480,7 +481,7 @@ export default function OrcamentoCliente({ params }) {
         </div>
       </div>
     }>
-      <OrcamentoClienteContent params={params} />
+      <OrcamentoClienteContent />
     </Suspense>
   );
 }
