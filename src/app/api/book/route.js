@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-// Arquivo local para salvar as reservas (funciona como banco de dados local)
+// Arquivo local para salvar as reservas (banco de dados de mock/redundância)
 const getBookingsFilePath = () => {
   return path.join(process.cwd(), 'bookings.json');
 };
@@ -37,12 +37,97 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Parâmetros obrigatórios ausentes' }, { status: 400 });
     }
 
-    // --- LÓGICA DE EMISSÃO DE RESERVA (HOLD MULTIPROVEDOR) ---
-    // Geramos um código localizador realístico (ex: EUR-123456)
-    const localizer = `EUR-${Math.floor(100000 + Math.random() * 900000)}`;
-    const timeLimit = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h a partir de agora
+    const provider = flightDetails.provider || 'consolidadora';
+    const isDuffel = provider === 'duffel';
 
-    // Construção rica de slices
+    let localizer = '';
+    let expiresAt = '';
+    let isRealHold = false;
+    let duffelErrorLog = null;
+
+    // --- 1. CRIAÇÃO DE HOLD VIA DUFFEL API (CASO INTERNACIONAL) ---
+    if (isDuffel) {
+      const duffelToken = process.env.DUFFEL_ACCESS_TOKEN;
+      if (duffelToken) {
+        // Mapear dados dos passageiros aos IDs da Duffel
+        const offerPassengers = flightDetails.passengers || [];
+        const duffelPassengers = [];
+        
+        // Agrupar inputs de passageiros para pareamento por tipo
+        const inputsByType = {
+          adult: passengerDetails.filter(p => p.type === 'adult'),
+          child: passengerDetails.filter(p => p.type === 'child' || p.type === 'infant')
+        };
+        const counters = { adult: 0, child: 0 };
+
+        offerPassengers.forEach((offPax) => {
+          const type = offPax.type === 'child' ? 'child' : 'adult';
+          const list = inputsByType[type] || [];
+          const index = counters[type];
+          const input = list[index];
+
+          if (input) {
+            duffelPassengers.push({
+              id: offPax.id,
+              given_name: input.givenName,
+              family_name: input.familyName,
+              born_on: input.bornOn, // YYYY-MM-DD
+              email: input.email || 'agencia@eurotur.com.br',
+              phone_number: input.phoneNumber || '+5562999999999',
+              title: input.title || 'mr',
+              gender: input.gender || 'm'
+            });
+            counters[type]++;
+          }
+        });
+
+        try {
+          const duffelOrderBody = {
+            data: {
+              selected_offers: [offerId],
+              passengers: duffelPassengers,
+              type: 'hold'
+            }
+          };
+
+          console.log('Sending hold creation request to Duffel API...');
+          const duffelRes = await fetch('https://api.duffel.com/air/orders', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${duffelToken}`,
+              'Duffel-Version': 'v2',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(duffelOrderBody)
+          });
+
+          if (duffelRes.ok) {
+            const duffelOrderData = await duffelRes.json();
+            const order = duffelOrderData.data || {};
+            localizer = order.booking_reference || `DUF-${Math.floor(100000 + Math.random() * 900000)}`;
+            expiresAt = order.payment_required_by || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            isRealHold = true;
+            console.log('Successfully created hold order in Duffel API. Localizer:', localizer);
+          } else {
+            const errText = await duffelRes.text();
+            duffelErrorLog = errText;
+            console.warn('Duffel API hold creation failed. Activating local simulator fallback. Error details:', errText);
+          }
+        } catch (err) {
+          duffelErrorLog = err.message;
+          console.error('Error invoking Duffel orders API:', err);
+        }
+      }
+    }
+
+    // --- 2. FALLBACK REDUNDANTE (SE FALHAR A DUFFEL OU SE FOR CONSOLIDADORA NACIONAL) ---
+    if (!localizer) {
+      const prefix = isDuffel ? 'DUF' : 'ESF';
+      localizer = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 horas de validade
+    }
+
+    // --- 3. CONSTRUTOR DE RESERVA UNIFICADA ---
     const slices = [];
     if (flightDetails && flightDetails.outbound) {
       slices.push({
@@ -85,34 +170,40 @@ export async function POST(request) {
       });
     }
 
-    // Estrutura unificada de reserva
     const newBooking = {
       id: `res_${Math.floor(100000 + Math.random() * 900000)}`,
       localizer,
       createdAt: new Date().toISOString(),
-      expiresAt: timeLimit,
+      expiresAt,
       status: 'hold',
       passengerDetails,
       hotel: hotelDetails,
       flight: {
         id: offerId,
+        provider,
         bookingReference: localizer,
         airline: flightDetails.airline || searchParams.airline || 'LATAM Airlines',
         airlineCode: flightDetails.airlineCode || searchParams.airlineCode || 'LA',
         slices,
-        totalAmount: flightDetails.price || searchParams.price || 3450,
+        totalAmount: flightDetails.price || searchParams.price || 3450, // Preço com markup aplicado
         totalCurrency: 'BRL',
+        // Dados de cotação e markup salvos
+        usdRate: flightDetails.usdRate || null,
+        priceUSD: flightDetails.priceUSD || null,
+        breakdown: flightDetails.breakdown || null,
+        markupPercent: flightDetails.markupPercent || 0.10,
+        isRealHold,
+        duffelErrorLog
       }
     };
 
-    // Salvar reserva no banco de dados local (para persistência)
+    // Salvar localmente
     saveBookingLocally(newBooking);
 
-    // Retorna a reserva criada
+    // Retornar dados da reserva
     return NextResponse.json({
       success: true,
       booking: newBooking,
-      // O token contém a reserva inteira em Base64 para persistência de fallback no cliente
       token: Buffer.from(JSON.stringify(newBooking)).toString('base64')
     });
 

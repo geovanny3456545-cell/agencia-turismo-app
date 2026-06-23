@@ -98,6 +98,44 @@ export default function Dashboard() {
   const [showBookModal, setShowBookModal] = useState(false);
   const [passengersData, setPassengersData] = useState([]);
   const [expandedOffers, setExpandedOffers] = useState({});
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [markupPercent, setMarkupPercent] = useState(0.10); // Margem de lucro de 10% por padrão
+
+  const getPriceBreakdown = (offer, margin) => {
+    const isDuffel = offer.provider === 'duffel';
+    const usdRate = offer.usdRate || 5.45;
+    
+    if (isDuffel) {
+      const duffelNetUSD = offer.priceUSD || (offer.price / usdRate);
+      const duffelNetBRL = duffelNetUSD * usdRate;
+      const servicedFeeBRL = duffelNetBRL * 0.01;
+      const subtotalBRL = duffelNetBRL + servicedFeeBRL;
+      const markupBRL = subtotalBRL * margin;
+      const finalPriceBRL = subtotalBRL + markupBRL;
+      
+      return {
+        duffelNetUSD,
+        duffelNetBRL,
+        servicedFeeBRL,
+        subtotalBRL,
+        markupBRL,
+        finalPriceBRL
+      };
+    } else {
+      const netBRL = offer.price;
+      const markupBRL = netBRL * margin;
+      const finalPriceBRL = netBRL + markupBRL;
+      
+      return {
+        duffelNetUSD: 0,
+        duffelNetBRL: netBRL,
+        servicedFeeBRL: 0,
+        subtotalBRL: netBRL,
+        markupBRL,
+        finalPriceBRL
+      };
+    }
+  };
   const toggleOfferExpand = (id) => {
     setExpandedOffers(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -855,6 +893,48 @@ export default function Dashboard() {
       {/* RESULTADOS DA BUSCA */}
       {results && !loading && (
         <div>
+          {/* Seletor de Margem de Lucro para o Agente */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 20px',
+            backgroundColor: '#f8f9fa',
+            border: '2px solid rgba(0, 51, 102, 0.1)',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>⚙️</span>
+              <strong style={{ fontSize: '14px', color: 'var(--primary-color)' }}>
+                Painel de Venda: Configurar Margem de Lucro em Tempo Real
+              </strong>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>Margem:</label>
+              <select 
+                value={markupPercent} 
+                onChange={(e) => setMarkupPercent(parseFloat(e.target.value))}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #ced4da',
+                  fontSize: '13.5px',
+                  fontWeight: 'bold',
+                  color: 'var(--primary-color)',
+                  backgroundColor: '#fff',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="0.05">5% de Margem (Promocional)</option>
+                <option value="0.10">10% de Margem (Padrão)</option>
+                <option value="0.15">15% de Margem (Premium)</option>
+              </select>
+            </div>
+          </div>
+
           {/* Matriz de Flexibilidade / Economia */}
           <div className="card" style={{ marginBottom: '30px', background: 'linear-gradient(135deg, #eef2f6 0%, #dfe7f0 100%)', border: '1px solid rgba(0,51,102,0.1)' }}>
             <h3 style={{ marginTop: 0, fontSize: '16px', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
@@ -1018,19 +1098,46 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right', marginLeft: '30px', borderLeft: '1px solid #eee', paddingLeft: '30px', minWidth: '180px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Preço Total {adults} ADT {children > 0 && `+ ${children} CHD`}:</span>
-                    <h2 style={{ margin: '5px 0 15px 0', color: 'var(--primary-color)', fontSize: '28px', fontWeight: '800' }}>
-                      {offer.currency === 'BRL' ? 'R$' : offer.currency} {offer.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </h2>
-                    <button 
-                      onClick={() => handleOpenBookModal(offer)}
-                      className="btn btn-accent" 
-                      style={{ width: '100%', padding: '12px 20px', fontSize: '15px', fontWeight: 'bold' }}
-                    >
-                      Emitir Hold
-                    </button>
-                  </div>
+                  {(() => {
+                    const breakdown = getPriceBreakdown(offer, markupPercent);
+                    const isDuffel = offer.provider === 'duffel';
+                    return (
+                      <div style={{ textAlign: 'right', marginLeft: '25px', borderLeft: '1px solid #eee', paddingLeft: '25px', minWidth: '220px' }}>
+                        {isDuffel ? (
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.5', textAlign: 'left', marginBottom: '10px', backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '6px', border: '1px solid #eef2f6' }}>
+                            💵 <strong>Detalhamento GDS:</strong><br/>
+                            • Tarifa Duffel: <span style={{ float: 'right', fontWeight: '600' }}>USD {offer.priceUSD?.toFixed(2)}</span><br/>
+                            • Câmbio Hoje: <span style={{ float: 'right', fontWeight: '600' }}>R$ {offer.usdRate?.toFixed(4)}</span><br/>
+                            • Líquido BRL: <span style={{ float: 'right' }}>R$ {breakdown.duffelNetBRL?.toFixed(2)}</span><br/>
+                            • Taxa Duffel (1%): <span style={{ float: 'right' }}>R$ {breakdown.servicedFeeBRL?.toFixed(2)}</span><br/>
+                            • Margem ({markupPercent * 100}%): <span style={{ float: 'right', color: 'var(--success)', fontWeight: 'bold' }}>R$ {breakdown.markupBRL?.toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.5', textAlign: 'left', marginBottom: '10px', backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '6px', border: '1px solid #eef2f6' }}>
+                            💳 <strong>Detalhamento Nacional:</strong><br/>
+                            • Tarifa Acordo: <span style={{ float: 'right', fontWeight: '600' }}>R$ {offer.price?.toFixed(2)}</span><br/>
+                            • Margem ({markupPercent * 100}%): <span style={{ float: 'right', color: 'var(--success)', fontWeight: 'bold' }}>R$ {breakdown.markupBRL?.toFixed(2)}</span><br/>
+                            {offer.installmentText && (
+                              <div style={{ marginTop: '4px', borderTop: '1px dashed #ddd', paddingTop: '4px', color: 'var(--secondary-color)', fontWeight: 'bold', fontSize: '10.5px' }}>
+                                💳 {offer.installmentText}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>Preço Final de Venda:</span>
+                        <h2 style={{ margin: '3px 0 15px 0', color: 'var(--primary-color)', fontSize: '24px', fontWeight: '800' }}>
+                          R$ {breakdown.finalPriceBRL.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </h2>
+                        <button 
+                          onClick={() => handleOpenBookModal({ ...offer, price: breakdown.finalPriceBRL, breakdown, markupPercent })}
+                          className="btn btn-accent" 
+                          style={{ width: '100%', padding: '12px 20px', fontSize: '15px', fontWeight: 'bold' }}
+                        >
+                          Emitir Hold
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Bloco Inferior: Acordeão Detalhado de Voos (Timeline dos Segments) */}

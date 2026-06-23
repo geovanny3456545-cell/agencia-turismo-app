@@ -443,6 +443,16 @@ function OrcamentoClienteContent() {
                   : `Passagem Aérea ${flightTypeText} em Classe Econômica`;
               })()}
             </div>
+            {orcamento.flight?.usdRate && (
+              <div style={{ fontSize: '12px', opacity: 0.9, marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '10px' }}>
+                💱 Câmbio aplicado para conversão: <strong>1 USD = R$ {orcamento.flight.usdRate.toFixed(4)}</strong> (Tarifa convertida da Duffel API)
+              </div>
+            )}
+            {orcamento.flight?.provider === 'consolidadora' && (
+              <div style={{ fontSize: '12.5px', opacity: 0.9, marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '10px' }}>
+                💳 <strong>Facilidades de Pagamento:</strong> Em até <strong>10x de R$ {(valorTotal / 10).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} sem juros</strong> no cartão.
+              </div>
+            )}
           </div>
 
           {/* BOTÕES DE AÇÃO DO AGENTE / CLIENTE */}
