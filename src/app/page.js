@@ -82,6 +82,22 @@ export default function Dashboard() {
     setResults(null);
   };
 
+  const handleSelectEvent = (event) => {
+    setOrigin(event.originLabel || 'BSB - Brasília International (Brasília / DF)');
+    setDestination(event.destinationLabel);
+    setDepartureDate(event.depDate);
+    if (event.retDate) {
+      setReturnDate(event.retDate);
+      setIsOneWay(false);
+    } else {
+      setReturnDate('');
+      setIsOneWay(true);
+    }
+    setSearchType('pacote');
+    setResults(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Autocomplete
   const [originSuggestions, setOriginSuggestions] = useState([]);
   const [destSuggestions, setDestSuggestions] = useState([]);
@@ -870,6 +886,231 @@ export default function Dashboard() {
           </button>
         </form>
       </div>
+
+      {/* SEÇÃO DE EVENTOS EXCLUSIVOS */}
+      {!results && !loading && (
+        <div style={{ marginTop: '40px', animation: 'fadeIn 0.5s ease-out' }}>
+          <div style={{ 
+            textAlign: 'center', 
+            marginBottom: '35px', 
+            background: 'linear-gradient(135deg, var(--primary-color) 0%, #002244 100%)', 
+            color: '#fff', 
+            padding: '30px', 
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            borderBottom: '4px solid var(--accent-color)'
+          }}>
+            <h2 style={{ margin: '0 0 10px 0', fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }}>
+              🎫 Pacotes para Grandes Eventos 2026
+            </h2>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: '15px', color: 'var(--accent-color)', fontWeight: 'bold' }}>
+              Ingresso garantido, voos de ida e volta, e hospedagem premium selecionada. Tudo em um só clique.
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '30px',
+            marginBottom: '50px'
+          }}>
+            {/* CARD 1: TITANS */}
+            <div className="card" style={{
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
+              border: '1px solid #eef2f6',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0
+            }}>
+              <div style={{ position: 'relative', height: '220px', overflow: 'hidden' }}>
+                <img 
+                  src="/titans.png" 
+                  alt="Copa Titans Arena 2026" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  top: '15px',
+                  left: '15px',
+                  backgroundColor: '#e11d48',
+                  color: '#fff',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  🔥 Destaque
+                </span>
+              </div>
+              <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: 'var(--primary-color)', fontWeight: '800' }}>
+                  Copa Titans Arena 2026
+                </h3>
+                <small style={{ display: 'block', color: 'var(--secondary-color)', fontWeight: 'bold', marginBottom: '12px' }}>
+                  📍 São Paulo / SP - Allianz Parque
+                </small>
+                <p style={{ margin: '0 0 20px 0', fontSize: '13.5px', color: '#555', lineHeight: '1.5', flex: 1 }}>
+                  Assista ao maior campeonato de e-sports e combates de alta tecnologia do continente. O pacote inclui ingresso oficial setorial, voos ida/volta e hospedagem de elite.
+                </p>
+                <div style={{ borderTop: '1px solid #eee', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#999', display: 'block' }}>Pacote completo desde:</span>
+                    <strong style={{ fontSize: '18px', color: 'var(--primary-color)' }}>R$ 2.450,00</strong>
+                  </div>
+                  <button 
+                    onClick={() => handleSelectEvent({
+                      originLabel: 'BSB - Brasília International (Brasília / DF)',
+                      destinationLabel: 'GRU - Guarulhos International (São Paulo / SP)',
+                      depDate: '2026-09-15',
+                      retDate: '2026-09-18'
+                    })}
+                    className="btn btn-accent"
+                    style={{ padding: '8px 16px', fontSize: '12.5px', fontWeight: 'bold' }}
+                  >
+                    Cotar Viagem
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 2: ROCK IN RIO */}
+            <div className="card" style={{
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
+              border: '1px solid #eef2f6',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0
+            }}>
+              <div style={{ position: 'relative', height: '220px', overflow: 'hidden' }}>
+                <img 
+                  src="/music_festival.png" 
+                  alt="Rock in Rio 2026" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  top: '15px',
+                  left: '15px',
+                  backgroundColor: 'var(--secondary-color)',
+                  color: '#fff',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  🎸 Festival
+                </span>
+              </div>
+              <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: 'var(--primary-color)', fontWeight: '800' }}>
+                  Festival Rock in Rio 2026
+                </h3>
+                <small style={{ display: 'block', color: 'var(--secondary-color)', fontWeight: 'bold', marginBottom: '12px' }}>
+                  📍 Rio de Janeiro / RJ - Cidade do Rock
+                </small>
+                <p style={{ margin: '0 0 20px 0', fontSize: '13.5px', color: '#555', lineHeight: '1.5', flex: 1 }}>
+                  Curta o maior festival de música e entretenimento do mundo com total conforto. Inclui ingresso de Gramado, transfer oficial para a Cidade do Rock, hotel em Copacabana e aéreo.
+                </p>
+                <div style={{ borderTop: '1px solid #eee', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#999', display: 'block' }}>Pacote completo desde:</span>
+                    <strong style={{ fontSize: '18px', color: 'var(--primary-color)' }}>R$ 3.190,00</strong>
+                  </div>
+                  <button 
+                    onClick={() => handleSelectEvent({
+                      originLabel: 'BSB - Brasília International (Brasília / DF)',
+                      destinationLabel: 'GIG - Galeão International (Rio de Janeiro / RJ)',
+                      depDate: '2026-09-18',
+                      retDate: '2026-09-22'
+                    })}
+                    className="btn btn-accent"
+                    style={{ padding: '8px 16px', fontSize: '12.5px', fontWeight: 'bold' }}
+                  >
+                    Cotar Viagem
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 3: F1 GP SÃO PAULO */}
+            <div className="card" style={{
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
+              border: '1px solid #eef2f6',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0
+            }}>
+              <div style={{ position: 'relative', height: '220px', overflow: 'hidden' }}>
+                <img 
+                  src="/f1_interlagos.png" 
+                  alt="Grande Prêmio de F1 de São Paulo" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  top: '15px',
+                  left: '15px',
+                  backgroundColor: '#16a34a',
+                  color: '#fff',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  🏎️ Esporte
+                </span>
+              </div>
+              <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: 'var(--primary-color)', fontWeight: '800' }}>
+                  GP de Fórmula 1 São Paulo 2026
+                </h3>
+                <small style={{ display: 'block', color: 'var(--secondary-color)', fontWeight: 'bold', marginBottom: '12px' }}>
+                  📍 São Paulo / SP - Interlagos
+                </small>
+                <p style={{ margin: '0 0 20px 0', fontSize: '13.5px', color: '#555', lineHeight: '1.5', flex: 1 }}>
+                  Sinta o ronco dos motores de perto no templo do automobilismo nacional. Pacote completo com ingresso oficial Setor G, hospedagem em hotel executivo na Av. Paulista e voos.
+                </p>
+                <div style={{ borderTop: '1px solid #eee', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#999', display: 'block' }}>Pacote completo desde:</span>
+                    <strong style={{ fontSize: '18px', color: 'var(--primary-color)' }}>R$ 4.290,00</strong>
+                  </div>
+                  <button 
+                    onClick={() => handleSelectEvent({
+                      originLabel: 'BSB - Brasília International (Brasília / DF)',
+                      destinationLabel: 'CGH - Congonhas Airport (São Paulo / SP)',
+                      depDate: '2026-11-06',
+                      retDate: '2026-11-09'
+                    })}
+                    className="btn btn-accent"
+                    style={{ padding: '8px 16px', fontSize: '12.5px', fontWeight: 'bold' }}
+                  >
+                    Cotar Viagem
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CARREGAMENTO */}
       {loading && (
